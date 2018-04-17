@@ -1,9 +1,14 @@
 -module(erl_optics).
 
+-export([init/0]).
+
 -export([increment/0,
-         init/0]).
+         read_counter/0]).
 
 increment() ->
+    exit(nif_library_not_loaded).
+
+read_counter() ->
     exit(nif_library_not_loaded).
 
 init() ->
