@@ -3,8 +3,6 @@
 
 #include <stdint.h>
 
-static struct optics *bob;
-
 ERL_NIF_TERM make_error(ErlNifEnv* env, const char *_msg)
 {
     ERL_NIF_TERM err = enif_make_atom(env, "error");
@@ -22,6 +20,14 @@ static int load(ErlNifEnv* env, void** priv_data, ERL_NIF_TERM load_info)
 
     *priv_data = bob;
     return 0;
+}
+
+static void unload(ErlNifEnv* env, void *priv_data)
+{
+    struct optics *optics = (struct optics *) priv_data;
+    struct optics_lens *lens = optics_lens_get(optics, "bob_the_counter");
+    optics_lens_close(lens);
+    optics_close(optics);
 }
 
 static ERL_NIF_TERM increment(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
@@ -59,4 +65,4 @@ static ErlNifFunc nif_funcs[] =
     {"read_counter", 0, read_counter}
 };
 
-ERL_NIF_INIT(erl_optics, nif_funcs, load, NULL, NULL, NULL)
+ERL_NIF_INIT(erl_optics, nif_funcs, load, NULL, NULL, unload)
