@@ -116,13 +116,12 @@ static ERL_NIF_TERM lens_free(
     if (!key) return make_error(env, "alloc_key");
 
     struct optics *optics = (struct optics *) enif_priv_data(env);
-    struct optics_lens *lens = optics_counter_alloc_get(optics, key);
+    struct optics_lens *lens = optics_lens_get(optics, key);
     free(key);
 
-    if (!lens) {
-        return make_error(env, "optics_lens_alloc_get");
-    }
-    optics_lens_free(lens);
+    if (!lens) return make_optics_error(env);
+
+    if (!optics_lens_free(lens)) return make_optics_error(env);
 
     return enif_make_atom(env, "ok");
 }
