@@ -2,13 +2,10 @@
 
 -export([init/0]).
 
--export([increment/0,
-         read_counter/0]).
+-export([counter_inc/1,
+         lens_free/1]).
 
-increment() ->
-    exit(nif_library_not_loaded).
-
-read_counter() ->
+counter_inc(_Key) ->
     exit(nif_library_not_loaded).
 
 init() ->
@@ -24,3 +21,6 @@ init() ->
             filename:join(Dir, erl_optics)
     end,
     ok = erlang:load_nif(SoName, 0).
+
+lens_free(_Key) ->
+    exit(nif_library_not_loaded).

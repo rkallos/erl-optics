@@ -2,8 +2,9 @@
 #include "erl_nif.h"
 
 #include <stdint.h>
+#include <string.h>
 
-ERL_NIF_TERM make_error(ErlNifEnv* env, const char *_msg)
+static ERL_NIF_TERM make_error(ErlNifEnv* env, const char *_msg)
 {
     ERL_NIF_TERM err = enif_make_atom(env, "error");
     ERL_NIF_TERM msg = enif_make_atom(env, _msg);
@@ -15,9 +16,6 @@ static int load(ErlNifEnv* env, void** priv_data, ERL_NIF_TERM load_info)
     struct optics *bob = optics_create("bob");
     if (!bob) return make_error(env, "optics_create_failed");
 
-    struct optics_lens *lens = optics_counter_alloc(bob, "bob_the_counter");
-    if (!lens) return make_error(env, "optics_counter_alloc_failed");
-
     *priv_data = bob;
     return 0;
 }
@@ -25,44 +23,74 @@ static int load(ErlNifEnv* env, void** priv_data, ERL_NIF_TERM load_info)
 static void unload(ErlNifEnv* env, void *priv_data)
 {
     struct optics *optics = (struct optics *) priv_data;
-    struct optics_lens *lens = optics_lens_get(optics, "bob_the_counter");
-    optics_lens_close(lens);
     optics_close(optics);
 }
 
-static ERL_NIF_TERM increment(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+static char *alloc_key(ErlNifBinary bin)
 {
-    void *data = enif_priv_data(env);
-    struct optics *optics = (struct optics *) data;
-    struct optics_lens *lens = optics_lens_get(optics, "bob_the_counter");
+    size_t key_len;
+    if (bin.size > optics_name_max_len) key_len = optics_name_max_len;
+    else key_len = bin.size;
+
+    char *key = malloc(key_len);
+    if (!key) return NULL;
+
+    memcpy(key, bin.data, key_len);
+    key[key_len] = 0;
+
+    return key;
+}
+
+static ERL_NIF_TERM counter_inc(
+    ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    ErlNifBinary bin;
+    if (!enif_inspect_binary(env, argv[0], &bin)) {
+        return enif_make_badarg(env);
+    }
+
+    char *key = alloc_key(bin);
+    if (!key) return make_error(env, "alloc_key");
+
+    struct optics *optics = (struct optics *) enif_priv_data(env);
+    struct optics_lens *lens = optics_counter_alloc_get(optics, key);
+    free(key);
+
     if (!lens) {
-        return make_error(env, "optics_lens_get");
+        return make_error(env, "optics_lens_alloc_get");
     }
     optics_counter_inc(lens, 1);
 
     return enif_make_atom(env, "ok");
 }
 
-static ERL_NIF_TERM read_counter(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+static ERL_NIF_TERM lens_free(
+    ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-    void *data = enif_priv_data(env);
-    struct optics *optics = (struct optics *) data;
-    struct optics_lens *lens = optics_lens_get(optics, "bob_the_counter");
-    int64_t val = 0;
-    enum optics_ret r = optics_counter_read(lens, optics_epoch(optics), &val);
-
-    if (r == optics_ok) {
-        ERL_NIF_TERM ok = enif_make_atom(env, "ok");
-        return enif_make_tuple2(env, ok, enif_make_int64(env, val));
-    } else {
-        return make_error(env, "cannot_read_counter");
+    ErlNifBinary bin;
+    if (!enif_inspect_binary(env, argv[0], &bin)) {
+        return enif_make_badarg(env);
     }
+
+    char *key = alloc_key(bin);
+    if (!key) return make_error(env, "alloc_key");
+
+    struct optics *optics = (struct optics *) enif_priv_data(env);
+    struct optics_lens *lens = optics_counter_alloc_get(optics, key);
+    free(key);
+
+    if (!lens) {
+        return make_error(env, "optics_lens_alloc_get");
+    }
+    optics_lens_free(lens);
+
+    return enif_make_atom(env, "ok");
 }
 
 static ErlNifFunc nif_funcs[] =
 {
-    {"increment", 0, increment},
-    {"read_counter", 0, read_counter}
+    {"counter_inc", 1, counter_inc},
+    {"lens_free", 1, lens_free}
 };
 
 ERL_NIF_INIT(erl_optics, nif_funcs, load, NULL, NULL, unload)
