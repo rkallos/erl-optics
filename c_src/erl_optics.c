@@ -49,6 +49,11 @@ static ERL_NIF_TERM counter_inc(
         return enif_make_badarg(env);
     }
 
+    int64_t amt;
+    if (!enif_get_int64(env, argv[1], &amt)) {
+        return enif_make_badarg(env);
+    }
+
     char *key = alloc_key(bin);
     if (!key) return make_error(env, "alloc_key");
 
@@ -59,7 +64,7 @@ static ERL_NIF_TERM counter_inc(
     if (!lens) {
         return make_error(env, "optics_lens_alloc_get");
     }
-    optics_counter_inc(lens, 1);
+    optics_counter_inc(lens, amt);
 
     return enif_make_atom(env, "ok");
 }
@@ -89,7 +94,7 @@ static ERL_NIF_TERM lens_free(
 
 static ErlNifFunc nif_funcs[] =
 {
-    {"counter_inc", 1, counter_inc},
+    {"counter_inc", 2, counter_inc},
     {"lens_free", 1, lens_free}
 };
 
