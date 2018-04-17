@@ -77,6 +77,33 @@ static ERL_NIF_TERM counter_inc(
     return enif_make_atom(env, "ok");
 }
 
+static ERL_NIF_TERM dist_record(
+    ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    ErlNifBinary bin;
+    if (!enif_inspect_binary(env, argv[0], &bin)) {
+        return enif_make_badarg(env);
+    }
+
+    double amt;
+    if (!enif_get_double(env, argv[1], &amt)) {
+        return enif_make_badarg(env);
+    }
+
+    char *key = alloc_key(bin);
+    if (!key) return make_error(env, "alloc_key");
+
+    struct optics *optics = (struct optics *) enif_priv_data(env);
+    struct optics_lens *lens = optics_dist_alloc_get(optics, key);
+    free(key);
+
+    if (!lens) return make_optics_error(env);
+
+    if (!optics_dist_record(lens, amt)) return make_optics_error(env);
+
+    return enif_make_atom(env, "ok");
+}
+
 static ERL_NIF_TERM gauge_set(
     ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
@@ -129,7 +156,8 @@ static ERL_NIF_TERM lens_free(
 static ErlNifFunc nif_funcs[] =
 {
     {"counter_inc", 2, counter_inc},
-    {"gauge_set", 2, gauge_set},
+    {"dist_record", 2, dist_record},
+    {"gauge_set2", 2, gauge_set},
     {"lens_free", 1, lens_free}
 };
 
