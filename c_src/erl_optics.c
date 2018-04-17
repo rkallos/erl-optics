@@ -11,10 +11,19 @@ static ERL_NIF_TERM make_error(ErlNifEnv* env, const char *_msg)
     return enif_make_tuple2(env, err, msg);
 }
 
+static ERL_NIF_TERM make_optics_error(ErlNifEnv *env)
+{
+    char buf[4096];
+    optics_strerror(&optics_errno, buf, 4096);
+    ERL_NIF_TERM err = enif_make_atom(env, "error");
+    ERL_NIF_TERM msg = enif_make_string(env, buf, ERL_NIF_LATIN1);
+    return enif_make_tuple2(env, err, msg);
+}
+
 static int load(ErlNifEnv* env, void** priv_data, ERL_NIF_TERM load_info)
 {
     struct optics *bob = optics_create("bob");
-    if (!bob) return make_error(env, "optics_create_failed");
+    if (!bob) return make_optics_error(env);
 
     *priv_data = bob;
     return 0;
@@ -61,10 +70,9 @@ static ERL_NIF_TERM counter_inc(
     struct optics_lens *lens = optics_counter_alloc_get(optics, key);
     free(key);
 
-    if (!lens) {
-        return make_error(env, "optics_lens_alloc_get");
-    }
-    optics_counter_inc(lens, amt);
+    if (!lens) return make_optics_error(env);
+
+    if (!optics_counter_inc(lens, amt)) return make_optics_error(env);
 
     return enif_make_atom(env, "ok");
 }
@@ -72,7 +80,7 @@ static ERL_NIF_TERM counter_inc(
 static ERL_NIF_TERM gauge_set(
     ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-        ErlNifBinary bin;
+    ErlNifBinary bin;
     if (!enif_inspect_binary(env, argv[0], &bin)) {
         return enif_make_badarg(env);
     }
@@ -89,10 +97,9 @@ static ERL_NIF_TERM gauge_set(
     struct optics_lens *lens = optics_gauge_alloc_get(optics, key);
     free(key);
 
-    if (!lens) {
-        return make_error(env, "optics_lens_alloc_get");
-    }
-    optics_gauge_set(lens, amt);
+    if (!lens) return make_optics_error(env);
+
+    if (!optics_gauge_set(lens, amt)) return make_optics_error(env);
 
     return enif_make_atom(env, "ok");
 }
