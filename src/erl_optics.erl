@@ -7,19 +7,25 @@
          gauge_set/2,
          lens_free/1]).
 
+-spec counter_inc(binary()) -> ok | {error, term()}.
+
 counter_inc(Key) ->
     counter_inc(Key, 1).
+
+
+-spec counter_inc(binary(), integer()) -> ok | {error, term()}.
 
 counter_inc(_Key, _Amt) ->
     exit(nif_library_not_loaded).
 
 
-gauge_set(Key, Val) when is_integer(Val) ->
-    gauge_set(Key, erlang:float(Val));
+-spec gauge_set(binary(), float()) -> ok | {error, term()}.
 
 gauge_set(_Key, _Val) ->
     exit(nif_library_not_loaded).
 
+
+-spec init() -> ok.
 
 init() ->
     SoName = case code:priv_dir(erl_optics) of
@@ -35,6 +41,8 @@ init() ->
     end,
     ok = erlang:load_nif(SoName, 0).
 
+
+-spec lens_free(binary()) -> ok | {error, term()}.
 
 lens_free(_Key) ->
     exit(nif_library_not_loaded).
