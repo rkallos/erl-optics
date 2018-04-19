@@ -4,10 +4,14 @@
   {registered, []},
   {applications,
    [kernel,
-    stdlib
+    stdlib,
+    foil
    ]},
   {env,[]},
-  {modules, []},
+  {modules, [
+    erl_optics,
+    erl_optics_lens
+  ]},
 
   {maintainers, []},
   {licenses, ["Apache 2.0"]},
