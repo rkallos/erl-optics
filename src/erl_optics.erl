@@ -44,7 +44,10 @@ gauge_set(Key, Val) ->
 -spec lens_free(binary()) -> ok | {error, term()}.
 
 lens_free(Key) ->
-    lens_free_nif(Key).
+    {ok, Lens} = get_lens(Key),
+    ok = lens_free_nif(Lens),
+    foil:delete(?NS, Key),
+    foil:load(?NS).
 
 
 -spec start() -> ok.

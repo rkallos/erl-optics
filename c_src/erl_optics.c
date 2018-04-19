@@ -178,19 +178,8 @@ static ERL_NIF_TERM gauge_set(
 static ERL_NIF_TERM lens_free(
     ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
 {
-    ErlNifBinary bin;
-    if (!enif_inspect_binary(env, argv[0], &bin)) {
-        return enif_make_badarg(env);
-    }
-
-    char *key = alloc_key(bin);
-    if (!key) return make_error(env, "alloc_key");
-
-    struct optics *optics = (struct optics *) enif_priv_data(env);
-    struct optics_lens *lens = optics_lens_get(optics, key);
-    free(key);
-
-    if (!lens) return make_optics_error(env);
+    struct optics_lens *lens = get_lens(env, argv[0]);
+    if (!lens) return make_error(env, "get_lens");
 
     if (!optics_lens_free(lens)) return make_optics_error(env);
 
@@ -213,7 +202,7 @@ static ERL_NIF_TERM optics_free(
     ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
 {
     struct optics *optics = get_optics(env, argv[0]);
-    if (!optics) return make_error(env, "get_optics_ptr");
+    if (!optics) return make_error(env, "get_optics");
     optics_close(optics);
 
     return enif_make_atom(env, "ok");
