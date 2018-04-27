@@ -15,7 +15,7 @@ static ERL_NIF_TERM alloc_counter(
     if (!key) return make_error(env, "alloc_key");
 
     struct optics_lens *lens = optics_counter_alloc(optics, key);
-    free(key);
+    enif_free(key);
 
     if (!lens) return make_optics_error(env);
 
@@ -40,7 +40,7 @@ static ERL_NIF_TERM alloc_dist(
     if (!key) return make_error(env, "alloc_key");
 
     struct optics_lens *lens = optics_dist_alloc(optics, key);
-    free(key);
+    enif_free(key);
 
     if (!lens) return make_optics_error(env);
 
@@ -65,7 +65,7 @@ static ERL_NIF_TERM alloc_gauge(
     if (!key) return make_error(env, "alloc_key");
 
     struct optics_lens *lens = optics_gauge_alloc(optics, key);
-    free(key);
+    enif_free(key);
 
     if (!lens) return make_optics_error(env);
 
