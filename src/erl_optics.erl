@@ -1,8 +1,5 @@
 -module(erl_optics).
 
--compile(no_native).
--on_load(on_load/0).
-
 -define(NS, ?MODULE).
 
 -export([counter_inc/1,
@@ -14,13 +11,6 @@
          start/1,
          stop/0]).
 
--export([
-    counter_read_nif/2,
-    dist_read_nif/2,
-    gauge_read_nif/2,
-    optics_epoch_nif/1
-]).
-
 -spec counter_inc(binary()) -> ok | {error, term()}.
 
 counter_inc(Key) ->
@@ -30,14 +20,14 @@ counter_inc(Key) ->
 
 counter_inc(Key, Amt) ->
     {ok, Ptr} = get_lens(Key),
-    counter_inc_nif(Ptr, Amt).
+    erl_optics_nif:counter_inc(Ptr, Amt).
 
 
 -spec dist_record(binary(), float()) -> ok | {error, term()}.
 
 dist_record(Key, Val) ->
     {ok, Ptr} = get_lens(Key),
-    dist_record_nif(Ptr, Val).
+    erl_optics_nif:dist_record(Ptr, Val).
 
 
 -spec gauge_set(binary(), number()) -> ok | {error, term()}.
@@ -47,14 +37,14 @@ gauge_set(Key, Val) when is_integer(Val) ->
 
 gauge_set(Key, Val) ->
     {ok, Ptr} = get_lens(Key),
-    gauge_set_nif(Ptr, Val).
+    erl_optics_nif:gauge_set(Ptr, Val).
 
 
 -spec lens_free(binary()) -> ok | {error, term()}.
 
 lens_free(Key) ->
     {ok, Lens} = get_lens(Key),
-    ok = lens_free_nif(Lens),
+    ok = erl_optics_nif:lens_free(Lens),
     foil:delete(?NS, Key),
     foil:load(?NS).
 
@@ -82,7 +72,7 @@ start(Lenses) ->
 
 stop() ->
     {ok, Ptr} = get_optics(),
-    ok = optics_free_nif(Ptr),
+    ok = erl_optics_nif:optics_free(Ptr),
     ok = foil:delete(?NS).
 
 %% private
@@ -102,17 +92,17 @@ alloc_lenses([{Name, Type} | Rest]) ->
 
 alloc_counter(Name) ->
     {ok, Optics} = get_optics(),
-    alloc_counter_nif(Optics, Name).
+    erl_optics_nif:alloc_counter(Optics, Name).
 
 
 alloc_dist(Name) ->
     {ok, Optics} = get_optics(),
-    alloc_dist_nif(Optics, Name).
+    erl_optics_nif:alloc_dist(Optics, Name).
 
 
 alloc_gauge(Name) ->
     {ok, Optics} = get_optics(),
-    alloc_gauge_nif(Optics, Name).
+    erl_optics_nif:alloc_gauge(Optics, Name).
 
 
 create_foil() ->
@@ -124,7 +114,7 @@ create_foil() ->
     end.
 
 create_optics() ->
-    OpticsStatus = optics_alloc_nif(),
+    OpticsStatus = erl_optics_nif:optics_alloc(),
     case OpticsStatus of
         {ok, Ptr} ->
             ok = foil:insert(?MODULE, optics, Ptr),
@@ -140,55 +130,3 @@ get_lens(Key) ->
 
 get_optics() ->
     foil:lookup(?NS, optics).
-
-
--spec on_load() -> ok.
-
-on_load() ->
-    SoName = case code:priv_dir(erl_optics) of
-        {error, bad_name} ->
-            case filelib:is_dir(filename:join(["..", priv])) of
-                true ->
-                    filename:join(["..", priv, erl_optics]);
-                _ ->
-                    filename:join([priv, erl_optics])
-            end;
-        Dir ->
-            filename:join(Dir, erl_optics)
-    end,
-    ok = erlang:load_nif(SoName, 0).
-
-
-%% nifs
-
-%% shamelessly stolen from crypto.erl
--define(nif_stub,nif_stub_error(?LINE)).
-nif_stub_error(Line) ->
-    erlang:nif_error({nif_not_loaded,module,?MODULE,line,Line}).
-
-alloc_counter_nif(_Optics, _Name) ->
-    ?nif_stub.
-alloc_dist_nif(_Optics, _Name) ->
-    ?nif_stub.
-alloc_gauge_nif(_Optics, _Name) ->
-    ?nif_stub.
-counter_inc_nif(_K, _V) ->
-    ?nif_stub.
-dist_record_nif(_K, _V) ->
-    ?nif_stub.
-gauge_set_nif(_K, _V) ->
-    ?nif_stub.
-lens_free_nif(_K) ->
-    ?nif_stub.
-optics_alloc_nif() ->
-    ?nif_stub.
-optics_epoch_nif(_Ptr) ->
-    ?nif_stub.
-optics_free_nif(_Ptr) ->
-    ?nif_stub.
-counter_read_nif(_Lens, _Epoch) ->
-    ?nif_stub.
-dist_read_nif(_Lens, _Epoch) ->
-    ?nif_stub.
-gauge_read_nif(_Lens, _Epoch) ->
-    ?nif_stub.

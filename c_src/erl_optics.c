@@ -261,24 +261,24 @@ static ERL_NIF_TERM gauge_read(
 
 static ErlNifFunc nif_funcs[] =
 {
-    {"alloc_counter_nif", 2, alloc_counter},
-    {"alloc_dist_nif", 2, alloc_dist},
-    {"alloc_gauge_nif", 2, alloc_gauge},
-    {"counter_inc_nif", 2, counter_inc},
-    {"dist_record_nif", 2, dist_record},
-    {"gauge_set_nif", 2, gauge_set},
-    {"lens_free_nif", 1, lens_free},
-    {"optics_alloc_nif", 0, optics_alloc},
-    {"optics_epoch_nif", 1, epoch},
-    {"optics_free_nif", 1, optics_free},
+    {"alloc_counter", 2, alloc_counter},
+    {"alloc_dist", 2, alloc_dist},
+    {"alloc_gauge", 2, alloc_gauge},
+    {"counter_inc", 2, counter_inc},
+    {"dist_record", 2, dist_record},
+    {"gauge_set", 2, gauge_set},
+    {"lens_free", 1, lens_free},
+    {"optics_alloc", 0, optics_alloc},
+    {"optics_epoch", 1, epoch},
+    {"optics_free", 1, optics_free},
 
     // For testing
     // TODO: Split into a separate NIF
-    {"counter_read_nif", 2, counter_read},
-    {"dist_read_nif", 2, dist_read},
-    {"gauge_read_nif", 2, gauge_read}
+    {"counter_read", 2, counter_read},
+    {"dist_read", 2, dist_read},
+    {"gauge_read", 2, gauge_read}
 };
 
-ERL_NIF_INIT(erl_optics, nif_funcs, NULL, NULL, NULL, NULL)
+ERL_NIF_INIT(erl_optics_nif, nif_funcs, NULL, NULL, NULL, NULL)
 
 // TODO: Pre-create atoms?
