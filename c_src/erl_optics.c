@@ -1,56 +1,4 @@
-#include "optics.h"
-#include "erl_nif.h"
-
-#include <stdint.h>
-#include <string.h>
-
-static ERL_NIF_TERM make_error(ErlNifEnv *env, const char *_msg)
-{
-    ERL_NIF_TERM err = enif_make_atom(env, "error");
-    ERL_NIF_TERM msg = enif_make_atom(env, _msg);
-    return enif_make_tuple2(env, err, msg);
-}
-
-static ERL_NIF_TERM make_optics_error(ErlNifEnv *env)
-{
-    char buf[4096];
-    optics_strerror(&optics_errno, buf, 4096);
-    ERL_NIF_TERM err = enif_make_atom(env, "error");
-    ERL_NIF_TERM msg = enif_make_string(env, buf, ERL_NIF_LATIN1);
-    return enif_make_tuple2(env, err, msg);
-}
-
-static char *alloc_key(ErlNifBinary bin)
-{
-    size_t key_len;
-    if (bin.size > optics_name_max_len) key_len = optics_name_max_len;
-    else key_len = bin.size;
-
-    char *key = malloc(key_len);
-    if (!key) return NULL;
-
-    memcpy(key, bin.data, key_len);
-    key[key_len] = 0;
-
-    return key;
-}
-
-static void *get_ptr(ErlNifEnv *env, ERL_NIF_TERM arg)
-{
-    int64_t dst;
-    if (!enif_get_int64(env, arg, &dst)) return NULL;
-    return (void *)dst; // Nothing to see here. Move along.
-}
-
-static struct optics *get_optics(ErlNifEnv *env, ERL_NIF_TERM arg)
-{
-    return (struct optics *)get_ptr(env, arg);
-}
-
-static struct optics_lens *get_lens(ErlNifEnv *env, ERL_NIF_TERM arg)
-{
-    return (struct optics_lens *)get_ptr(env, arg);
-}
+#include "common.h"
 
 static ERL_NIF_TERM alloc_counter(
     ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
@@ -165,8 +113,8 @@ static ERL_NIF_TERM gauge_set(
     struct optics_lens *lens = get_lens(env, argv[0]);
     if (!lens) return make_error(env, "get_lens");
 
-    int64_t amt;
-    if (!enif_get_int64(env, argv[1], &amt)) {
+    double amt;
+    if (!enif_get_double(env, argv[1], &amt)) {
         return enif_make_badarg(env);
     }
 
@@ -198,6 +146,17 @@ static ERL_NIF_TERM optics_alloc(
     return enif_make_tuple2(env, ok, ptr);
 }
 
+static ERL_NIF_TERM epoch(
+    ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+{
+    struct optics *optics = get_optics(env, argv[0]);
+    if (!optics) return make_error(env, "get_optics");
+
+    size_t epoch = optics_epoch(optics);
+
+    return enif_make_int64(env, epoch);
+}
+
 static ERL_NIF_TERM optics_free(
     ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
 {
@@ -206,6 +165,98 @@ static ERL_NIF_TERM optics_free(
     optics_close(optics);
 
     return enif_make_atom(env, "ok");
+}
+
+//------------------------------------------------------------------------------
+// For testing: DO NOT USE IN PRODUCTION CODE
+//------------------------------------------------------------------------------
+
+static ERL_NIF_TERM counter_read(
+    ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+{
+    struct optics_lens *lens = get_lens(env, argv[0]);
+    if (!lens) return make_error(env, "get_lens");
+
+    size_t epoch;
+    if (!enif_get_uint64(env, argv[1], &epoch))
+        return make_error(env, "enif_get_uint64");
+
+    int64_t val;
+
+    switch(optics_counter_read(lens, epoch, &val)) {
+    case optics_err:
+        return make_optics_error(env);
+    case optics_busy:
+        return make_error(env, "optics_busy");
+    case optics_break:
+        return make_error(env, "optics_break");
+    }
+    return enif_make_uint64(env, val);
+}
+
+static ERL_NIF_TERM dist_read(
+    ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+{
+    struct optics_lens *lens = get_lens(env, argv[0]);
+    if (!lens) return make_error(env, "get_lens");
+
+    size_t epoch;
+    if (!enif_get_uint64(env, argv[1], &epoch))
+        return make_error(env, "enif_get_uint64");
+
+    struct optics_dist val;
+
+    switch(optics_dist_read(lens, epoch, &val)) {
+    case optics_err:
+        return make_optics_error(env);
+    case optics_busy:
+        return make_error(env, "optics_busy");
+    case optics_break:
+        return make_error(env, "optics_break");
+    }
+
+    ERL_NIF_TERM k_n = enif_make_atom(env, "n");
+    ERL_NIF_TERM k_p50 = enif_make_atom(env, "p50");
+    ERL_NIF_TERM k_p90 = enif_make_atom(env, "p90");
+    ERL_NIF_TERM k_p99 = enif_make_atom(env, "p99");
+    ERL_NIF_TERM k_max = enif_make_atom(env, "max");
+
+    ERL_NIF_TERM v_n = enif_make_uint64(env, val.n);
+    ERL_NIF_TERM v_p50 = enif_make_double(env, val.p50);
+    ERL_NIF_TERM v_p90 = enif_make_double(env, val.p90);
+    ERL_NIF_TERM v_p99 = enif_make_double(env, val.p99);
+    ERL_NIF_TERM v_max = enif_make_double(env, val.max);
+
+    ERL_NIF_TERM map = enif_make_new_map(env);
+    enif_make_map_put(env, map, k_n, v_n, &map);
+    enif_make_map_put(env, map, k_p50, v_p50, &map);
+    enif_make_map_put(env, map, k_p90, v_p90, &map);
+    enif_make_map_put(env, map, k_p99, v_p99, &map);
+    enif_make_map_put(env, map, k_max, v_max, &map);
+    return map;
+}
+
+static ERL_NIF_TERM gauge_read(
+    ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+{
+    struct optics_lens *lens = get_lens(env, argv[0]);
+    if (!lens) return make_error(env, "get_lens");
+
+    size_t epoch;
+    if (!enif_get_uint64(env, argv[1], &epoch))
+        return make_error(env, "enif_get_uint64");
+
+    double val;
+
+    switch(optics_gauge_read(lens, epoch, &val)) {
+    case optics_err:
+        return make_optics_error(env);
+    case optics_busy:
+        return make_error(env, "optics_busy");
+    case optics_break:
+        return make_error(env, "optics_break");
+    }
+    return enif_make_double(env, val);
 }
 
 static ErlNifFunc nif_funcs[] =
@@ -218,7 +269,14 @@ static ErlNifFunc nif_funcs[] =
     {"gauge_set_nif", 2, gauge_set},
     {"lens_free_nif", 1, lens_free},
     {"optics_alloc_nif", 0, optics_alloc},
-    {"optics_free_nif", 1, optics_free}
+    {"optics_epoch_nif", 1, epoch},
+    {"optics_free_nif", 1, optics_free},
+
+    // For testing
+    // TODO: Split into a separate NIF
+    {"counter_read_nif", 2, counter_read},
+    {"dist_read_nif", 2, dist_read},
+    {"gauge_read_nif", 2, gauge_read}
 };
 
 ERL_NIF_INIT(erl_optics, nif_funcs, NULL, NULL, NULL, NULL)

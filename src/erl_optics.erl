@@ -14,6 +14,13 @@
          start/1,
          stop/0]).
 
+-export([
+    counter_read_nif/2,
+    dist_read_nif/2,
+    gauge_read_nif/2,
+    optics_epoch_nif/1
+]).
+
 -spec counter_inc(binary()) -> ok | {error, term()}.
 
 counter_inc(Key) ->
@@ -29,16 +36,18 @@ counter_inc(Key, Amt) ->
 -spec dist_record(binary(), float()) -> ok | {error, term()}.
 
 dist_record(Key, Val) ->
-    dist_record_nif(Key, Val).
+    {ok, Ptr} = get_lens(Key),
+    dist_record_nif(Ptr, Val).
 
 
 -spec gauge_set(binary(), number()) -> ok | {error, term()}.
 
 gauge_set(Key, Val) when is_integer(Val) ->
-    gauge_set_nif(Key, float(Val));
+    gauge_set(Key, float(Val));
 
 gauge_set(Key, Val) ->
-    gauge_set_nif(Key, Val).
+    {ok, Ptr} = get_lens(Key),
+    gauge_set_nif(Ptr, Val).
 
 
 -spec lens_free(binary()) -> ok | {error, term()}.
@@ -62,9 +71,12 @@ start() ->
 
 start(Lenses) ->
     case create_foil() of
-        ok -> create_optics(Lenses);
+        ok ->
+            ok = create_optics(),
+            ok = alloc_lenses(Lenses);
         Err -> Err
     end.
+
 
 -spec stop() -> ok.
 
@@ -111,13 +123,12 @@ create_foil() ->
         ok -> ok
     end.
 
-create_optics(Lenses) ->
+create_optics() ->
     OpticsStatus = optics_alloc_nif(),
     case OpticsStatus of
         {ok, Ptr} ->
-            foil:insert(?MODULE, optics, Ptr),
-            foil:load(?MODULE),
-            alloc_lenses(Lenses);
+            ok = foil:insert(?MODULE, optics, Ptr),
+            ok = foil:load(?MODULE);
         _ ->
             {error, cannot_alloc_optics}
     end.
@@ -171,5 +182,13 @@ lens_free_nif(_K) ->
     ?nif_stub.
 optics_alloc_nif() ->
     ?nif_stub.
+optics_epoch_nif(_Ptr) ->
+    ?nif_stub.
 optics_free_nif(_Ptr) ->
+    ?nif_stub.
+counter_read_nif(_Lens, _Epoch) ->
+    ?nif_stub.
+dist_read_nif(_Lens, _Epoch) ->
+    ?nif_stub.
+gauge_read_nif(_Lens, _Epoch) ->
     ?nif_stub.
