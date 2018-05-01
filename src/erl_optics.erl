@@ -80,8 +80,9 @@ stop() ->
 alloc_lenses([]) ->
     foil:load(?NS);
 
-alloc_lenses([{Name, Type} | Rest]) ->
-    {ok, Ptr} = case Type of
+alloc_lenses([Lens | Rest]) ->
+    Name = erl_optics_lens:name(Lens),
+    {ok, Ptr} = case erl_optics_lens:type(Lens) of
         counter -> alloc_counter(Name);
            dist -> alloc_dist(Name);
           gauge -> alloc_gauge(Name)

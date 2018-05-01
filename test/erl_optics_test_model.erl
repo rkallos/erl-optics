@@ -12,14 +12,16 @@ seq(Lenses, Lst) ->
 
 % private
 
-add_lens({Name, counter}, Acc) ->
-    Acc#{Name => []};
-
-add_lens({Name, dist}, Acc) ->
-    Acc#{Name => []};
-
-add_lens({Name, gauge}, Acc) ->
-    Acc#{Name => 0.0}.
+add_lens(Lens, Acc) ->
+    Name = erl_optics_lens:name(Lens),
+    case erl_optics_lens:type(Lens) of
+        counter ->
+            Acc#{Name => []};
+        dist ->
+            Acc#{Name => []};
+        gauge ->
+            Acc#{Name => 0.0}
+    end.
 
 
 counter_inc(Model, Key, Val) ->
@@ -67,27 +69,27 @@ read_lens(State, Epoch) ->
     fun(Lens, Acc) -> read_lens(State, Lens, Epoch, Acc) end.
 
 
-read_lens(State, {Name, counter}, _Epoch, Acc) ->
+read_lens(State, Lens, _Epoch, Acc) ->
+    Name = erl_optics_lens:name(Lens),
     #{Name := Evts} = State,
-    Acc#{Name => lists:sum(Evts)};
-
-read_lens(State, {Name, dist}, _Epoch, Acc) ->
-    #{Name := Evts} = State,
-    Sorted = lists:sort(Evts),
-    Res = #{
-        n => length(Sorted),
-        % I knew these were going to be a pain to test
-        % p50 => percentile(Sorted, 50),
-        % p90 => percentile(Sorted, 90),
-        % p99 => percentile(Sorted, 99),
-        max => max(Sorted)
-    },
-    Acc#{Name => Res};
-
-read_lens(State, {Name, gauge}, _Epoch, Acc) ->
-    #{Name := Val} = State,
-    Acc#{Name => Val}.
-
+    case erl_optics_lens:type(Lens) of
+        counter ->
+            Acc#{Name => lists:sum(Evts)};
+        dist ->
+            Sorted = lists:sort(Evts),
+            Res = #{
+                n => length(Sorted),
+                % I knew these were going to be a pain to test
+                % p50 => percentile(Sorted, 50),
+                % p90 => percentile(Sorted, 90),
+                % p99 => percentile(Sorted, 99),
+                max => max(Sorted)
+            },
+            Acc#{Name => Res};
+        gauge ->
+            % in this case, Evts is a scalar
+            Acc#{Name => Evts}
+    end.
 
 read_lenses(State, Lenses, Epoch) ->
     lists:foldl(read_lens(State, Epoch), #{}, Lenses).

@@ -32,18 +32,18 @@ read_lens(Epoch) ->
     fun(Lens, Acc) -> read_lens(Lens, Epoch, Acc) end.
 
 
-read_lens({Name, counter}, Epoch, Acc) ->
+read_lens(Lens, Epoch, Acc) ->
+    Name = erl_optics_lens:name(Lens),
     {ok, Ptr} = erl_optics:get_lens(Name),
-    Acc#{Name => erl_optics_nif:counter_read(Ptr, Epoch)};
-
-read_lens({Name, dist}, Epoch, Acc) ->
-    {ok, Ptr} = erl_optics:get_lens(Name),
-    Map0 = erl_optics_nif:dist_read(Ptr, Epoch),
-    % Given optics's PRNG-based reservoir eviction, .n and .max % are really the
-    % only two values that can be tested deterministically
-    Map = maps:with([n, max], Map0),
-    Acc#{Name => Map};
-
-read_lens({Name, gauge}, Epoch, Acc) ->
-    {ok, Ptr} = erl_optics:get_lens(Name),
-    Acc#{Name => erl_optics_nif:gauge_read(Ptr, Epoch)}.
+    case erl_optics_lens:type(Lens) of
+        counter ->
+            Acc#{Name => erl_optics_nif:counter_read(Ptr, Epoch)};
+        dist ->
+            Map0 = erl_optics_nif:dist_read(Ptr, Epoch),
+            % Given optics's PRNG-based reservoir eviction, .n and .max % are really the
+            % only two values that can be tested deterministically
+            Map = maps:with([n, max], Map0),
+            Acc#{Name => Map};
+        gauge ->
+            Acc#{Name => erl_optics_nif:gauge_read(Ptr, Epoch)}
+    end.

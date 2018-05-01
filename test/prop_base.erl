@@ -22,19 +22,30 @@ check({Lenses, Seq}) ->
 %% Generators
 
 event(Lenses) ->
-    ?LET(Lens, oneof(Lenses),
-        case Lens of
-            {Name, counter} ->
+    ?LET(Lens, oneof(Lenses), begin
+        Name = erl_optics_lens:name(Lens),
+        case erl_optics_lens:type(Lens) of
+            counter ->
                 {counter_inc, Name, pos_integer()};
-            {Name, dist} ->
+            dist ->
                 {dist_record, Name, float(0.0, inf)};
-            {Name, gauge} ->
+            gauge ->
                 {gauge_set, Name, float()}
-        end).
+        end
+    end).
 
 
 lens() ->
-    ?LET([Name, Type], [lens_name(), type()], {Name, Type}).
+    ?LET([Name, Type], [lens_name(), lens_type()], begin
+        case Type of
+            counter ->
+                erl_optics_lens:counter(Name);
+            dist ->
+                erl_optics_lens:dist(Name);
+            gauge ->
+                erl_optics_lens:gauge(Name)
+        end
+    end).
 
 lens_name() ->
     UA = $A,
@@ -48,9 +59,12 @@ lens_name() ->
 
 seq() ->
     ?LET(Lenses, non_empty(list(lens())), begin
-        UniqueLenses = maps:to_list(maps:from_list(Lenses)),
+        Map = lists:foldl(fun(Lens, Acc) ->
+            Acc#{erl_optics_lens:name(Lens) => Lens}
+        end, #{}, Lenses),
+        UniqueLenses = maps:values(Map),
         {UniqueLenses, non_empty(list(event(Lenses)))}
     end).
 
 
-type() -> oneof([counter, dist, gauge]).
+lens_type() -> oneof([counter, dist, gauge]).
