@@ -49,11 +49,15 @@ alloc_dist(_Optics, _Name) ->
     ?nif_stub.
 alloc_gauge(_Optics, _Name) ->
     ?nif_stub.
+alloc_histo(_Optics, _Name, _Buckets) ->
+    ?nif_stub.
 counter_inc(_K, _V) ->
     ?nif_stub.
 dist_record(_K, _V) ->
     ?nif_stub.
 gauge_set(_K, _V) ->
+    ?nif_stub.
+histo_inc(_K, _V) ->
     ?nif_stub.
 lens_free(_K) ->
     ?nif_stub.
@@ -68,4 +72,6 @@ counter_read(_Lens, _Epoch) ->
 dist_read(_Lens, _Epoch) ->
     ?nif_stub.
 gauge_read(_Lens, _Epoch) ->
+    ?nif_stub.
+histo_read(_Lens, _Epoch) ->
     ?nif_stub.

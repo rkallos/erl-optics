@@ -1,14 +1,20 @@
 #include "optics.h"
 #include "erl_nif.h"
 
+#include <assert.h>
 #include <stdint.h>
 #include <string.h>
 
-static ERL_NIF_TERM make_error(ErlNifEnv *env, const char *_msg)
+#define ERROR(msg) make_error(env, msg, __FILE__, __LINE__);
+
+static ERL_NIF_TERM make_error(
+    ErlNifEnv *env, const char *_msg, const char *f, int l)
 {
     ERL_NIF_TERM err = enif_make_atom(env, "error");
+    ERL_NIF_TERM file = enif_make_atom(env, f);
+    ERL_NIF_TERM line = enif_make_uint(env, l);
     ERL_NIF_TERM msg = enif_make_atom(env, _msg);
-    return enif_make_tuple2(env, err, msg);
+    return enif_make_tuple4(env, err, msg, file, line);
 }
 
 static ERL_NIF_TERM make_optics_error(ErlNifEnv *env)

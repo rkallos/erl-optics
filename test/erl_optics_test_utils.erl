@@ -21,7 +21,10 @@ do({counter_inc, Key, Val}) ->
     erl_optics:counter_inc(Key, Val);
 
 do({gauge_set, Key, Val}) ->
-    erl_optics:gauge_set(Key, Val).
+    erl_optics:gauge_set(Key, Val);
+
+do({histo_inc, Key, Val}) ->
+    erl_optics:histo_inc(Key, Val).
 
 
 read_lenses(Lenses, Epoch) ->
@@ -45,5 +48,7 @@ read_lens(Lens, Epoch, Acc) ->
             Map = maps:with([n, max], Map0),
             Acc#{Name => Map};
         gauge ->
-            Acc#{Name => erl_optics_nif:gauge_read(Ptr, Epoch)}
+            Acc#{Name => erl_optics_nif:gauge_read(Ptr, Epoch)};
+        histo ->
+            Acc#{Name => erl_optics_nif:histo_read(Ptr, Epoch)}
     end.

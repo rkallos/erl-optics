@@ -6,6 +6,7 @@
          counter_inc/2,
          dist_record/2,
          gauge_set/2,
+         histo_inc/2,
          lens_free/1,
          start/0,
          start/1,
@@ -40,6 +41,16 @@ gauge_set(Key, Val) ->
     erl_optics_nif:gauge_set(Ptr, Val).
 
 
+-spec histo_inc(binary(), number()) -> ok | {error, term()}.
+
+histo_inc(Key, Val) when is_integer(Val) ->
+    histo_inc(Key, float(Val));
+
+histo_inc(Key, Val) ->
+    {ok, Ptr} = get_lens(Key),
+    erl_optics_nif:histo_inc(Ptr, Val).
+
+
 -spec lens_free(binary()) -> ok | {error, term()}.
 
 lens_free(Key) ->
@@ -52,9 +63,12 @@ lens_free(Key) ->
 -spec start() -> ok.
 
 start() ->
-    Lenses = [erl_optics_lens:counter(<<"bob_the_counter">>),
-              erl_optics_lens:gauge(<<"bob_the_gauge">>),
-              erl_optics_lens:dist(<<"bob_the_dist">>)],
+    Lenses = [
+        erl_optics_lens:counter(<<"bob_the_counter">>),
+        erl_optics_lens:dist(<<"bob_the_dist">>),
+        erl_optics_lens:gauge(<<"bob_the_gauge">>),
+        erl_optics_lens:histo(<<"bob_the_histo">>, [10.0, 20.0, 30.0, 40.0])
+    ],
     start(Lenses).
 
 -spec start([erl_optics_lens:desc()]) -> ok.
@@ -83,9 +97,15 @@ alloc_lenses([]) ->
 alloc_lenses([Lens | Rest]) ->
     Name = erl_optics_lens:name(Lens),
     {ok, Ptr} = case erl_optics_lens:type(Lens) of
-        counter -> alloc_counter(Name);
-           dist -> alloc_dist(Name);
-          gauge -> alloc_gauge(Name)
+        counter ->
+            alloc_counter(Name);
+        dist ->
+            alloc_dist(Name);
+        gauge ->
+            alloc_gauge(Name);
+        histo ->
+            Buckets = erl_optics_lens:ext(Lens),
+            alloc_histo(Name, Buckets)
     end,
     foil:insert(?NS, Name, Ptr),
     alloc_lenses(Rest).
@@ -104,6 +124,11 @@ alloc_dist(Name) ->
 alloc_gauge(Name) ->
     {ok, Optics} = get_optics(),
     erl_optics_nif:alloc_gauge(Optics, Name).
+
+
+alloc_histo(Name, Buckets) ->
+    {ok, Optics} = get_optics(),
+    erl_optics_nif:alloc_histo(Optics, Name, Buckets).
 
 
 create_foil() ->

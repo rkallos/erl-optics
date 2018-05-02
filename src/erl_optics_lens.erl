@@ -4,47 +4,71 @@
 
 -export([
     counter/1,
-    gauge/1,
     dist/1,
+    ext/1,
+    gauge/1,
+    histo/2,
     name/1,
     type/1
 ]).
 
--type lens_type() :: counter | dist | gauge.
+-type histo_buckets() :: list(float()).
 
--record(optics_lens, {
-    name = undefined :: bitstring(),
-    type = undefined :: lens_type()
+-type lens_name() :: bitstring().
+-type lens_type() :: counter | dist | gauge | histo.
+-type lens_ext() :: histo_buckets() | undefined.
+
+-record(lens, {
+    name = undefined :: lens_name(),
+    type = undefined :: lens_type(),
+    ext = undefined :: lens_ext() | undefined
 }).
 
--opaque optics_lens() :: #optics_lens{}.
+-opaque lens() :: #lens{}.
 
--export_type([optics_lens/0]).
+-export_type([
+    histo_buckets/0,
+    lens/0,
+    lens_name/0,
+    lens_type/0,
+    lens_ext/0
+]).
 
 
--spec counter(binary()) -> optics_lens().
+-spec counter(lens_name()) -> lens().
 
 counter(Name) when is_binary(Name) ->
-    #optics_lens{name = Name, type = counter}.
+    #lens{name = Name, type = counter}.
 
 
--spec dist(binary()) -> optics_lens().
+-spec dist(lens_name()) -> lens().
 
 dist(Name) when is_binary(Name) ->
-    #optics_lens{name = Name, type = dist}.
+    #lens{name = Name, type = dist}.
 
 
--spec gauge(binary()) -> optics_lens().
+-spec ext(lens()) -> lens_ext().
+
+ext(#lens{ext = Ext}) -> Ext.
+
+
+-spec gauge(lens_name()) -> lens().
 
 gauge(Name) when is_binary(Name) ->
-    #optics_lens{name = Name, type = gauge}.
+    #lens{name = Name, type = gauge}.
 
 
--spec name(optics_lens()) -> binary().
+-spec histo(lens_name(), list(float())) -> lens().
 
-name(#optics_lens{name = Name}) -> Name.
+histo(Name, Buckets) when is_binary(Name) ->
+    #lens{name = Name, type = histo, ext = Buckets}.
 
 
--spec type(optics_lens()) -> lens_type().
+-spec name(lens()) -> binary().
 
-type(#optics_lens{type = Type}) -> Type.
+name(#lens{name = Name}) -> Name.
+
+
+-spec type(lens()) -> lens_type().
+
+type(#lens{type = Type}) -> Type.

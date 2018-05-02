@@ -26,27 +26,41 @@ event(Lenses) ->
         Name = erl_optics_lens:name(Lens),
         case erl_optics_lens:type(Lens) of
             counter ->
-                {counter_inc, Name, pos_integer()};
+                ?LAZY(?LET([Val], [pos_integer()],
+                    {counter_inc, Name, Val}));
             dist ->
-                {dist_record, Name, float(0.0, inf)};
+                ?LAZY(?LET([Val], [non_neg_float()],
+                    {dist_record, Name, Val}));
             gauge ->
-                {gauge_set, Name, float()}
+                ?LAZY(?LET([Val], [float()],
+                    {gauge_set, Name, Val}));
+            histo ->
+                ?LAZY(?LET([Val], [non_neg_float()],
+                    {histo_inc, Name, Val}))
         end
     end).
 
 
+histo_buckets(Len) -> vector(Len, non_neg_float()).
+
+
 lens() ->
-    ?LET([Name, Type], [lens_name(), lens_type()], begin
+    ?LET([Name, Type], [lens_name(), erl_optics_lens:lens_type()], begin
         case Type of
             counter ->
                 erl_optics_lens:counter(Name);
             dist ->
                 erl_optics_lens:dist(Name);
             gauge ->
-                erl_optics_lens:gauge(Name)
+                erl_optics_lens:gauge(Name);
+            histo ->
+                ?LAZY(?LET([Buckets], [histo_buckets(8)],
+                    erl_optics_lens:histo(Name, lists:usort(Buckets))))
         end
     end).
 
+
+% because using erl_optics_lens:lens_name() is not restrictive enough
 lens_name() ->
     UA = $A,
     UZ = $Z,
@@ -65,6 +79,3 @@ seq() ->
         UniqueLenses = maps:values(Map),
         {UniqueLenses, non_empty(list(event(Lenses)))}
     end).
-
-
-lens_type() -> oneof([counter, dist, gauge]).
