@@ -6,10 +6,15 @@
 
 seq(Lenses, Lst) ->
     erl_optics:start(Lenses),
-    lists:foreach(fun do/1, Lst),
+    Returns = lists:map(fun(Evt) ->
+        case do(Evt) of
+            ok -> ok;
+            {error, _} -> error
+        end
+    end, Lst),
     State = read_lenses(Lenses, 0),
     erl_optics:stop(),
-    State.
+    {State, Returns}.
 
 
 % private

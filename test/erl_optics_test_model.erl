@@ -4,32 +4,42 @@
     seq/2
 ]).
 
+-type lens_name() :: erl_optics_lens:lens_name().
+-type lens() :: erl_optics_lens:lens().
+-type op() :: counter_inc | dist_record | gauge_set | histo_inc.
+
+-record(model, {
+    events  =  [] :: [op()],
+    lenses  = #{} :: #{lens_name() => lens()},
+    lens_state   = #{} :: map(),
+    returns =  [] :: [ok | error]
+}).
+
+-type model() :: #model{}.
+
 
 seq(Lenses, Lst) ->
-    State = lists:foldl(fun do/2, erl_optics_test_model:new(Lenses), Lst),
-    read_lenses(State, Lenses, 0).
+    Model = lists:foldl(fun do/2, new(Lenses), Lst),
+    read_lenses(Model, 0).
 
 
 % private
 
-add_lens(Lens, Acc) ->
+add_lens(Lens, Model = #model{lenses = Lenses, lens_state = State}) ->
     Name = erl_optics_lens:name(Lens),
-    case erl_optics_lens:type(Lens) of
+    Lenses2 = Lenses#{Name => Lens},
+    State2 = case erl_optics_lens:type(Lens) of
         counter ->
-            Acc#{Name => []};
+            State#{Name => []};
         dist ->
-            Acc#{Name => []};
+            State#{Name => []};
         gauge ->
-            Acc#{Name => 0.0};
+            State#{Name => 0.0};
         histo ->
             Buckets = erl_optics_lens:ext(Lens),
-            Acc#{Name => #{evts => [], buckets => Buckets}}
-    end.
-
-
-counter_inc(Model, Key, Val) ->
-    #{Key := Vals} = Model,
-    Model#{Key := [Val | Vals]}.
+            State#{Name => #{evts => [], buckets => Buckets}}
+    end,
+    Model#model{lenses = Lenses2, lens_state = State2}.
 
 
 determine_histo_key(Event, Keys) ->
@@ -41,36 +51,27 @@ determine_histo_key(Event, Keys) ->
             above;
         KeysLen ->
             below;
-        N ->
+        _N ->
             lists:nth(KeysLen - Keys2Len, Keys)
     end.
 
-dist_record(Model, Key, Val) ->
-    #{Key := Vals} = Model,
-    Model#{Key := [Val | Vals]}.
 
+-spec do(op(), model()) -> model().
 
-do({counter_inc, Key, Val}, Acc) ->
-    counter_inc(Acc, Key, Val);
-
-do({dist_record, Key, Val}, Acc) ->
-    dist_record(Acc, Key, Val);
-
-do({gauge_set, Key, Val}, Acc) ->
-    gauge_set(Acc, Key, Val);
-
-do({histo_inc, Key, Val}, Acc) ->
-    histo_inc(Acc, Key, Val).
-
-
-gauge_set(Model, Key, Val) ->
-    #{Key := _Val0} = Model,
-    Model#{Key := Val}.
-
-
-histo_inc(Model, Key, Val) ->
-    #{Key := Map = #{evts := Vals}} = Model,
-    Model#{Key => Map#{evts => [Val | Vals]}}.
+do(Evt = {Op, Key, Val}, Model) ->
+    #model{
+        events = Evts,
+        lenses = #{Key := Lens},
+        returns = Rets,
+        lens_state = State = #{Key := Vals}
+    } = Model,
+    {Ret, State2} = case {erl_optics_lens:type(Lens), type(Op)} of
+        {T, T} ->
+            {ok, State#{Key => update_state(Op, Val, Vals)}};
+        _ ->
+            {error, State}
+    end,
+    Model#model{events = [Evt | Evts], returns = [Ret | Rets], lens_state = State2}.
 
 
 max([]) -> 0.0;
@@ -79,7 +80,7 @@ max(Lst) -> lists:last(Lst).
 
 
 new(Lenses) ->
-    lists:foldl(fun add_lens/2, #{}, Lenses).
+    lists:foldl(fun add_lens/2, #model{}, Lenses).
 
 
 percentile([], _) -> 0.0;
@@ -103,13 +104,13 @@ populate_histo(Events, Buckets) ->
     Map4#{above => Above + V}.
 
 
-read_lens(State, Epoch) ->
-    fun(Lens, Acc) -> read_lens(State, Lens, Epoch, Acc) end.
+read_lens(Epoch) ->
+    fun(Lens, Acc) -> read_lens(Lens, Epoch, Acc) end.
 
 
-read_lens(State, Lens, _Epoch, Acc) ->
+read_lens(Lens, _Epoch, Acc) ->
     Name = erl_optics_lens:name(Lens),
-    #{Name := Evts} = State,
+    #{Name := Evts} = Acc,
     case erl_optics_lens:type(Lens) of
         counter ->
             Acc#{Name => lists:sum(Evts)};
@@ -132,5 +133,31 @@ read_lens(State, Lens, _Epoch, Acc) ->
             Acc#{Name => populate_histo(Events, Buckets)}
     end.
 
-read_lenses(State, Lenses, Epoch) ->
-    lists:foldl(read_lens(State, Epoch), #{}, Lenses).
+read_lenses(Model, Epoch) ->
+    #model{lenses = Lenses, lens_state = State, returns = Rets} = Model,
+    LensState = lists:foldl(fun(Lens, Acc) ->
+        read_lens(Lens, Epoch, Acc)
+    end, State, maps:values(Lenses)),
+    {LensState, lists:reverse(Rets)}.
+
+
+type(counter_inc) -> counter;
+
+type(dist_record) -> dist;
+
+type(gauge_set) -> gauge;
+
+type(histo_inc) -> histo.
+
+
+update_state(counter_inc, Val, Vals) ->
+    [Val | Vals];
+
+update_state(dist_record, Val, Vals) ->
+    [Val | Vals];
+
+update_state(gauge_set, Val, _Vals) ->
+    Val;
+
+update_state(histo_inc, Val, Vals = #{evts := Evts}) ->
+    Vals#{evts => [Val | Evts]}.
