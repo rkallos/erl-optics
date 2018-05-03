@@ -1,6 +1,8 @@
 -module(prop_base).
 -include_lib("proper/include/proper.hrl").
 
+-define(OPS, [counter_inc, dist_record, gauge_set, histo_inc]).
+
 %% properties
 
 prop_test() ->
@@ -21,24 +23,30 @@ check({Lenses, Seq}) ->
 
 %% Generators
 
-event(Lenses) ->
+error_event(Lenses) ->
     ?LET(Lens, oneof(Lenses), begin
         Name = erl_optics_lens:name(Lens),
         case erl_optics_lens:type(Lens) of
             counter ->
-                ?LAZY(?LET([Val], [pos_integer()],
-                    {counter_inc, Name, Val}));
+                ?LAZY(?LET([Op, Val], [oneof(?OPS -- [counter_inc]), number()],
+                    {Op, Name, Val}));
             dist ->
-                ?LAZY(?LET([Val], [non_neg_float()],
-                    {dist_record, Name, Val}));
+                ?LAZY(?LET([Op, Val], [oneof(?OPS -- [dist_record]), number()],
+                    {Op, Name, Val}));
             gauge ->
-                ?LAZY(?LET([Val], [float()],
-                    {gauge_set, Name, Val}));
+                ?LAZY(?LET([Op, Val], [oneof(?OPS -- [gauge_set]), number()],
+                    {Op, Name, Val}));
             histo ->
-                ?LAZY(?LET([Val], [non_neg_float()],
-                    {histo_inc, Name, Val}))
+                ?LAZY(?LET([Op, Val], [oneof(?OPS -- [histo_inc]), number()],
+                    {Op, Name, Val}))
         end
     end).
+
+event(Lenses) ->
+    weighted_union([
+        {90, ok_event(Lenses)},
+        {10, error_event(Lenses)}
+    ]).
 
 
 histo_buckets(Len) -> vector(Len, non_neg_float()).
@@ -71,11 +79,31 @@ lens_name() ->
     ?LET(Str, non_empty(list(oneof([UChar, DChar]))), list_to_binary(Str)).
 
 
+ok_event(Lenses) ->
+    ?LET(Lens, oneof(Lenses), begin
+        Name = erl_optics_lens:name(Lens),
+        case erl_optics_lens:type(Lens) of
+            counter ->
+                ?LAZY(?LET([Val], [pos_integer()],
+                    {counter_inc, Name, Val}));
+            dist ->
+                ?LAZY(?LET([Val], [non_neg_float()],
+                    {dist_record, Name, Val}));
+            gauge ->
+                ?LAZY(?LET([Val], [float()],
+                    {gauge_set, Name, Val}));
+            histo ->
+                ?LAZY(?LET([Val], [non_neg_float()],
+                    {histo_inc, Name, Val}))
+        end
+    end).
+
+
 seq() ->
     ?LET(Lenses, non_empty(list(lens())), begin
         Map = lists:foldl(fun(Lens, Acc) ->
             Acc#{erl_optics_lens:name(Lens) => Lens}
         end, #{}, Lenses),
         UniqueLenses = maps:values(Map),
-        {UniqueLenses, non_empty(list(event(Lenses)))}
+        {UniqueLenses, non_empty(list(event(maps:values(Map))))}
     end).

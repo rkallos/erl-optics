@@ -7,9 +7,10 @@
 seq(Lenses, Lst) ->
     erl_optics:start(Lenses),
     Returns = lists:map(fun(Evt) ->
-        case do(Evt) of
+        case catch do(Evt) of
             ok -> ok;
-            {error, _} -> error
+            {error, _} -> error;
+            {'EXIT', {badarg, _}} -> error
         end
     end, Lst),
     State = read_lenses(Lenses, 0),
