@@ -30,7 +30,10 @@ do({gauge_set, Key, Val}) ->
     erl_optics:gauge_set(Key, Val);
 
 do({histo_inc, Key, Val}) ->
-    erl_optics:histo_inc(Key, Val).
+    erl_optics:histo_inc(Key, Val);
+
+do({quantile_update, Key, Val}) ->
+    erl_optics:quantile_update(Key, Val).
 
 
 read_lenses(Lenses, Epoch) ->
@@ -56,5 +59,9 @@ read_lens(Lens, Epoch, Acc) ->
         gauge ->
             Acc#{Name => erl_optics_nif:gauge_read(Ptr, Epoch)};
         histo ->
-            Acc#{Name => erl_optics_nif:histo_read(Ptr, Epoch)}
+            Acc#{Name => erl_optics_nif:histo_read(Ptr, Epoch)};
+        quantile ->
+            % Can't check in Erlang due to PRNG-based updating
+            _Val = erl_optics_nif:quantile_read(Ptr, Epoch),
+            Acc#{Name => 0.0}
     end.

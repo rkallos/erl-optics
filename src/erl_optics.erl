@@ -8,6 +8,7 @@
          gauge_set/2,
          histo_inc/2,
          lens_free/1,
+         quantile_update/2,
          start/0,
          start/1,
          stop/0]).
@@ -60,6 +61,11 @@ lens_free(Key) ->
     foil:load(?NS).
 
 
+quantile_update(Key, Val) ->
+    {ok, Ptr} = get_lens(Key),
+    erl_optics_nif:quantile_update(Ptr, Val).
+
+
 -spec start() -> ok.
 
 start() ->
@@ -105,7 +111,12 @@ alloc_lenses([Lens | Rest]) ->
             gauge_alloc(Name);
         histo ->
             Buckets = erl_optics_lens:ext(Lens),
-            histo_alloc(Name, Buckets)
+            histo_alloc(Name, Buckets);
+        quantile ->
+            AdjVal = erl_optics_lens:quantile_adjustment_value(Lens),
+            Estimate = erl_optics_lens:quantile_estimate(Lens),
+            Target = erl_optics_lens:quantile_target(Lens),
+            quantile_alloc(Name, Target, Estimate, AdjVal)
     end,
     foil:insert(?NS, Name, Ptr),
     alloc_lenses(Rest).
@@ -129,6 +140,11 @@ gauge_alloc(Name) ->
 histo_alloc(Name, Buckets) ->
     {ok, Optics} = get_optics(),
     erl_optics_nif:histo_alloc(Optics, Name, Buckets).
+
+
+quantile_alloc(Name, Target, Estimate, AdjVal) ->
+    {ok, Optics} = get_optics(),
+    erl_optics_nif:quantile_alloc(Optics, Name, Target, Estimate, AdjVal).
 
 
 create_foil() ->

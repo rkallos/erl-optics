@@ -182,6 +182,54 @@ static ERL_NIF_TERM histo_inc(
     return enif_make_atom(env, "ok");
 }
 
+static ERL_NIF_TERM quantile_alloc(
+    ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+{
+    struct optics *optics = get_optics(env, argv[0]);
+    if (!optics) return ERROR("get_optics");
+
+    ErlNifBinary bin;
+    if (!enif_inspect_binary(env, argv[1], &bin)) {
+        return enif_make_badarg(env);
+    }
+
+    char *key = alloc_key(bin);
+    if (!key) return ERROR("alloc_key");
+
+    double target_quantile, estimate, adjustment_value;
+    if (!enif_get_double(env, argv[2], &target_quantile) ||
+        !enif_get_double(env, argv[3], &estimate) ||
+        !enif_get_double(env, argv[4], &adjustment_value))
+        return enif_make_badarg(env);
+
+    struct optics_lens *lens =
+        optics_quantile_alloc(optics, key, target_quantile,
+                              estimate, adjustment_value);
+
+    if (!lens) return make_optics_error(env);
+
+    ERL_NIF_TERM ok = enif_make_atom(env, "ok");
+    ERL_NIF_TERM ptr = enif_make_int64(env, (int64_t)lens);
+
+    return enif_make_tuple2(env, ok, ptr);
+}
+
+static ERL_NIF_TERM quantile_update(
+    ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+{
+    struct optics_lens *lens = get_lens(env, argv[0]);
+    if (!lens) return ERROR("get_lens");
+
+    double amt;
+    if (!enif_get_double(env, argv[1], &amt)) {
+        return enif_make_badarg(env);
+    }
+
+    if (!optics_quantile_update(lens, amt)) return make_optics_error(env);
+
+    return enif_make_atom(env, "ok");
+}
+
 static ERL_NIF_TERM lens_free(
     ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
 {
@@ -358,6 +406,29 @@ static ERL_NIF_TERM histo_read(
     return map;
 }
 
+static ERL_NIF_TERM quantile_read(
+    ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+{
+    struct optics_lens *lens = get_lens(env, argv[0]);
+    if (!lens) return ERROR("get_lens");
+
+    size_t epoch;
+    if (!enif_get_uint64(env, argv[1], &epoch))
+        return ERROR("enif_get_uint64");
+
+    double val;
+
+    switch(optics_quantile_read(lens, epoch, &val)) {
+    case optics_err:
+        return make_optics_error(env);
+    case optics_busy:
+        return ERROR("optics_busy");
+    case optics_break:
+        return ERROR("optics_break");
+    }
+    return enif_make_double(env, val);
+}
+
 static ErlNifFunc nif_funcs[] =
 {
     {"counter_alloc", 2, counter_alloc},
@@ -377,12 +448,16 @@ static ErlNifFunc nif_funcs[] =
     {"optics_epoch", 1, epoch},
     {"optics_free", 1, optics_free},
 
+    {"quantile_alloc", 5, quantile_alloc},
+    {"quantile_update", 2, quantile_update},
+
     // For testing
     // TODO: Split into a separate NIF
     {"counter_read", 2, counter_read},
     {"dist_read", 2, dist_read},
     {"gauge_read", 2, gauge_read},
-    {"histo_read", 2, histo_read}
+    {"histo_read", 2, histo_read},
+    {"quantile_read", 2, quantile_read}
 };
 
 ERL_NIF_INIT(erl_optics_nif, nif_funcs, NULL, NULL, NULL, NULL)

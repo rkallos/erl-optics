@@ -6,7 +6,8 @@
 
 -type lens_name() :: erl_optics_lens:lens_name().
 -type lens() :: erl_optics_lens:lens().
--type op() :: counter_inc | dist_record | gauge_set | histo_inc.
+-type op() :: counter_inc | dist_record | gauge_set | histo_inc |
+    quantile_update.
 
 -record(model, {
     events  =  [] :: [op()],
@@ -37,7 +38,10 @@ add_lens(Lens, Model = #model{lenses = Lenses, lens_state = State}) ->
             State#{Name => 0.0};
         histo ->
             Buckets = erl_optics_lens:ext(Lens),
-            State#{Name => #{evts => [], buckets => Buckets}}
+            State#{Name => #{evts => [], buckets => Buckets}};
+        quantile ->
+            Ext = erl_optics_lens:ext(Lens),
+            State#{Name => #{ext => Ext}}
     end,
     Model#model{lenses = Lenses2, lens_state = State2}.
 
@@ -130,7 +134,11 @@ read_lens(Lens, _Epoch, Acc) ->
             Acc#{Name => Evts};
         histo ->
             #{evts := Events, buckets := Buckets} = Evts,
-            Acc#{Name => populate_histo(Events, Buckets)}
+            Acc#{Name => populate_histo(Events, Buckets)};
+        quantile ->
+            % this is brutally difficult to test without a huge number of events
+            % due to the use of RNGs in quantile_update
+            Acc#{Name => 0.0}
     end.
 
 read_lenses(Model, Epoch) ->
@@ -147,7 +155,9 @@ type(dist_record) -> dist;
 
 type(gauge_set) -> gauge;
 
-type(histo_inc) -> histo.
+type(histo_inc) -> histo;
+
+type(quantile_update) -> quantile.
 
 
 update_state(counter_inc, Val, Vals) ->
@@ -160,4 +170,7 @@ update_state(gauge_set, Val, _Vals) ->
     Val;
 
 update_state(histo_inc, Val, Vals = #{evts := Evts}) ->
-    Vals#{evts => [Val | Evts]}.
+    Vals#{evts => [Val | Evts]};
+
+update_state(quantile_update, _Val, Vals) ->
+    Vals.

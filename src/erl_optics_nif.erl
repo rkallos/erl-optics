@@ -75,3 +75,9 @@ optics_epoch(_Ptr) ->
     ?nif_stub.
 optics_free(_Ptr) ->
     ?nif_stub.
+quantile_alloc(_Optics, _Name, _Target, _Estimate, _Adjustment) ->
+    ?nif_stub.
+quantile_read(_Lens, _Epoch) ->
+    ?nif_stub.
+quantile_update(_K, _V) ->
+    ?nif_stub.

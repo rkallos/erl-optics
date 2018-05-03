@@ -1,7 +1,7 @@
 -module(prop_base).
 -include_lib("proper/include/proper.hrl").
 
--define(OPS, [counter_inc, dist_record, gauge_set, histo_inc]).
+-define(OPS, [counter_inc, dist_record, gauge_set, histo_inc, quantile_update]).
 
 %% properties
 
@@ -38,6 +38,9 @@ error_event(Lenses) ->
                     {Op, Name, Val}));
             histo ->
                 ?LAZY(?LET([Op, Val], [oneof(?OPS -- [histo_inc]), number()],
+                    {Op, Name, Val}));
+            quantile ->
+                ?LAZY(?LET([Op, Val], [oneof(?OPS -- [quantile_update]), number()],
                     {Op, Name, Val}))
         end
     end).
@@ -63,7 +66,10 @@ lens() ->
                 erl_optics_lens:gauge(Name);
             histo ->
                 ?LAZY(?LET([Buckets], [histo_buckets(8)],
-                    erl_optics_lens:histo(Name, lists:usort(Buckets))))
+                    erl_optics_lens:histo(Name, lists:usort(Buckets))));
+            quantile ->
+                ?LAZY(?LET([T, E, A], [non_neg_float(), non_neg_float(), non_neg_float()],
+                    erl_optics_lens:quantile(Name, T, E, A)))
         end
     end).
 
@@ -94,7 +100,10 @@ ok_event(Lenses) ->
                     {gauge_set, Name, Val}));
             histo ->
                 ?LAZY(?LET([Val], [non_neg_float()],
-                    {histo_inc, Name, Val}))
+                    {histo_inc, Name, Val}));
+            quantile ->
+                ?LAZY(?LET([Val], [non_neg_float()],
+                    {quantile_update, Name, Val}))
         end
     end).
 
