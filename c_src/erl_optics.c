@@ -1,6 +1,6 @@
 #include "common.h"
 
-static ERL_NIF_TERM alloc_counter(
+static ERL_NIF_TERM counter_alloc(
     ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
 {
     struct optics *optics = get_optics(env, argv[0]);
@@ -25,7 +25,23 @@ static ERL_NIF_TERM alloc_counter(
     return enif_make_tuple2(env, ok, ptr);
 }
 
-static ERL_NIF_TERM alloc_dist(
+static ERL_NIF_TERM counter_inc(
+    ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+{
+    struct optics_lens *lens = get_lens(env, argv[0]);
+    if (!lens) return ERROR("get_lens");
+
+    int64_t amt;
+    if (!enif_get_int64(env, argv[1], &amt)) {
+        return enif_make_badarg(env);
+    }
+
+    if (!optics_counter_inc(lens, amt)) return make_optics_error(env);
+
+    return enif_make_atom(env, "ok");
+}
+
+static ERL_NIF_TERM dist_alloc(
     ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
 {
     struct optics *optics = get_optics(env, argv[0]);
@@ -50,7 +66,23 @@ static ERL_NIF_TERM alloc_dist(
     return enif_make_tuple2(env, ok, ptr);
 }
 
-static ERL_NIF_TERM alloc_gauge(
+static ERL_NIF_TERM dist_record(
+    ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+{
+    struct optics_lens *lens = get_lens(env, argv[0]);
+    if (!lens) return ERROR("get_lens");
+
+    double amt;
+    if (!enif_get_double(env, argv[1], &amt)) {
+        return enif_make_badarg(env);
+    }
+
+    if (!optics_dist_record(lens, amt)) return make_optics_error(env);
+
+    return enif_make_atom(env, "ok");
+}
+
+static ERL_NIF_TERM gauge_alloc(
     ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
 {
     struct optics *optics = get_optics(env, argv[0]);
@@ -75,8 +107,24 @@ static ERL_NIF_TERM alloc_gauge(
     return enif_make_tuple2(env, ok, ptr);
 }
 
-static ERL_NIF_TERM alloc_histo(
+static ERL_NIF_TERM gauge_set(
     ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+{
+    struct optics_lens *lens = get_lens(env, argv[0]);
+    if (!lens) return ERROR("get_lens");
+
+    double amt;
+    if (!enif_get_double(env, argv[1], &amt)) {
+        return enif_make_badarg(env);
+    }
+
+    if (!optics_gauge_set(lens, amt)) return make_optics_error(env);
+
+    return enif_make_atom(env, "ok");
+}
+
+static ERL_NIF_TERM histo_alloc(
+    ErlNifEnv *env, int c, const ERL_NIF_TERM argv[])
 {
     struct optics *optics = get_optics(env, argv[0]);
     if (!optics) return ERROR("get_optics");
@@ -116,54 +164,6 @@ static ERL_NIF_TERM alloc_histo(
     ERL_NIF_TERM ptr = enif_make_int64(env, (int64_t)lens);
 
     return enif_make_tuple2(env, ok, ptr);
-}
-
-static ERL_NIF_TERM counter_inc(
-    ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
-{
-    struct optics_lens *lens = get_lens(env, argv[0]);
-    if (!lens) return ERROR("get_lens");
-
-    int64_t amt;
-    if (!enif_get_int64(env, argv[1], &amt)) {
-        return enif_make_badarg(env);
-    }
-
-    if (!optics_counter_inc(lens, amt)) return make_optics_error(env);
-
-    return enif_make_atom(env, "ok");
-}
-
-static ERL_NIF_TERM dist_record(
-    ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
-{
-    struct optics_lens *lens = get_lens(env, argv[0]);
-    if (!lens) return ERROR("get_lens");
-
-    double amt;
-    if (!enif_get_double(env, argv[1], &amt)) {
-        return enif_make_badarg(env);
-    }
-
-    if (!optics_dist_record(lens, amt)) return make_optics_error(env);
-
-    return enif_make_atom(env, "ok");
-}
-
-static ERL_NIF_TERM gauge_set(
-    ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
-{
-    struct optics_lens *lens = get_lens(env, argv[0]);
-    if (!lens) return ERROR("get_lens");
-
-    double amt;
-    if (!enif_get_double(env, argv[1], &amt)) {
-        return enif_make_badarg(env);
-    }
-
-    if (!optics_gauge_set(lens, amt)) return make_optics_error(env);
-
-    return enif_make_atom(env, "ok");
 }
 
 static ERL_NIF_TERM histo_inc(
@@ -360,14 +360,18 @@ static ERL_NIF_TERM histo_read(
 
 static ErlNifFunc nif_funcs[] =
 {
-    {"alloc_counter", 2, alloc_counter},
-    {"alloc_dist", 2, alloc_dist},
-    {"alloc_gauge", 2, alloc_gauge},
-    {"alloc_histo", 3, alloc_histo},
+    {"counter_alloc", 2, counter_alloc},
     {"counter_inc", 2, counter_inc},
+
+    {"dist_alloc", 2, dist_alloc},
     {"dist_record", 2, dist_record},
+
+    {"gauge_alloc", 2, gauge_alloc},
     {"gauge_set", 2, gauge_set},
+
+    {"histo_alloc", 3, histo_alloc},
     {"histo_inc", 2, histo_inc},
+
     {"lens_free", 1, lens_free},
     {"optics_alloc", 0, optics_alloc},
     {"optics_epoch", 1, epoch},

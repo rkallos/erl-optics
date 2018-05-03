@@ -98,37 +98,37 @@ alloc_lenses([Lens | Rest]) ->
     Name = erl_optics_lens:name(Lens),
     {ok, Ptr} = case erl_optics_lens:type(Lens) of
         counter ->
-            alloc_counter(Name);
+            counter_alloc(Name);
         dist ->
-            alloc_dist(Name);
+            dist_alloc(Name);
         gauge ->
-            alloc_gauge(Name);
+            gauge_alloc(Name);
         histo ->
             Buckets = erl_optics_lens:ext(Lens),
-            alloc_histo(Name, Buckets)
+            histo_alloc(Name, Buckets)
     end,
     foil:insert(?NS, Name, Ptr),
     alloc_lenses(Rest).
 
 
-alloc_counter(Name) ->
+counter_alloc(Name) ->
     {ok, Optics} = get_optics(),
-    erl_optics_nif:alloc_counter(Optics, Name).
+    erl_optics_nif:counter_alloc(Optics, Name).
 
 
-alloc_dist(Name) ->
+dist_alloc(Name) ->
     {ok, Optics} = get_optics(),
-    erl_optics_nif:alloc_dist(Optics, Name).
+    erl_optics_nif:dist_alloc(Optics, Name).
 
 
-alloc_gauge(Name) ->
+gauge_alloc(Name) ->
     {ok, Optics} = get_optics(),
-    erl_optics_nif:alloc_gauge(Optics, Name).
+    erl_optics_nif:gauge_alloc(Optics, Name).
 
 
-alloc_histo(Name, Buckets) ->
+histo_alloc(Name, Buckets) ->
     {ok, Optics} = get_optics(),
-    erl_optics_nif:alloc_histo(Optics, Name, Buckets).
+    erl_optics_nif:histo_alloc(Optics, Name, Buckets).
 
 
 create_foil() ->
