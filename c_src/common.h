@@ -32,7 +32,7 @@ static char *alloc_key(ErlNifBinary bin)
     if (bin.size > optics_name_max_len) key_len = optics_name_max_len;
     else key_len = bin.size;
 
-    char *key = enif_alloc(key_len);
+    char *key = enif_alloc(key_len + 1);
     if (!key) return NULL;
 
     memcpy(key, bin.data, key_len);
