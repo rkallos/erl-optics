@@ -10,7 +10,8 @@
   {env,[]},
   {modules, [
     erl_optics,
-    erl_optics_lens
+    erl_optics_lens,
+    erl_optics_nif
   ]},
 
   {maintainers, []},
