@@ -5,18 +5,27 @@
 
 -export([
     counter_alloc/2,
-    dist_alloc/2,
-    gauge_alloc/2,
     counter_inc/2,
+    dist_alloc/2,
     dist_record/2,
+    gauge_alloc/2,
     gauge_set/2,
+    histo_alloc/3,
+    histo_inc/2,
     lens_free/1,
-    optics_alloc/0,
-    optics_epoch/1,
+    optics_create/0,
     optics_free/1,
-    counter_read/2,
-    dist_read/2,
-    gauge_read/2
+    quantile_alloc/5,
+    quantile_update/2
+]).
+
+%% for testing purposes only
+-export([
+    counter_read/1,
+    dist_read/1,
+    gauge_read/1,
+    histo_read/1,
+    quantile_read/1
 ]).
 
 %% THIS MODULE SHOULD ONLY BE CALLED FROM erl_optics.erl
@@ -47,17 +56,17 @@ counter_alloc(_Optics, _Name) ->
     ?nif_stub.
 counter_inc(_K, _V) ->
     ?nif_stub.
-counter_read(_Lens, _Epoch) ->
+counter_read(_Lens) ->
     ?nif_stub.
 dist_alloc(_Optics, _Name) ->
     ?nif_stub.
-dist_read(_Lens, _Epoch) ->
+dist_read(_Lens) ->
     ?nif_stub.
 dist_record(_K, _V) ->
     ?nif_stub.
 gauge_alloc(_Optics, _Name) ->
     ?nif_stub.
-gauge_read(_Lens, _Epoch) ->
+gauge_read(_Lens) ->
     ?nif_stub.
 gauge_set(_K, _V) ->
     ?nif_stub.
@@ -65,19 +74,19 @@ histo_alloc(_Optics, _Name, _Buckets) ->
     ?nif_stub.
 histo_inc(_K, _V) ->
     ?nif_stub.
-histo_read(_Lens, _Epoch) ->
+histo_read(_Lens) ->
     ?nif_stub.
 lens_free(_K) ->
     ?nif_stub.
-optics_alloc() ->
+optics_create() ->
     ?nif_stub.
-optics_epoch(_Ptr) ->
+optics_epoch(_Optics) ->
     ?nif_stub.
 optics_free(_Ptr) ->
     ?nif_stub.
 quantile_alloc(_Optics, _Name, _Target, _Estimate, _Adjustment) ->
     ?nif_stub.
-quantile_read(_Lens, _Epoch) ->
+quantile_read(_Lens) ->
     ?nif_stub.
 quantile_update(_K, _V) ->
     ?nif_stub.

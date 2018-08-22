@@ -2,16 +2,23 @@
 
 -define(NS, ?MODULE).
 
--export([counter_inc/1,
-         counter_inc/2,
-         dist_record/2,
-         gauge_set/2,
-         histo_inc/2,
-         lens_free/1,
-         quantile_update/2,
-         start/0,
-         start/1,
-         stop/0]).
+-export([
+    counter_inc/1,
+    counter_inc/2,
+    dist_record/2,
+    gauge_set/2,
+    histo_inc/2,
+    lens_free/1,
+    quantile_update/2,
+
+    start/1,
+    stop/0
+]).
+
+%% for testing purposes only.
+-export([
+    start/0
+]).
 
 -spec counter_inc(binary()) -> ok | {error, term()}.
 
@@ -156,7 +163,7 @@ create_foil() ->
     end.
 
 create_optics() ->
-    OpticsStatus = erl_optics_nif:optics_alloc(),
+    OpticsStatus = erl_optics_nif:optics_create(),
     case OpticsStatus of
         {ok, Ptr} ->
             ok = foil:insert(?MODULE, optics, Ptr),

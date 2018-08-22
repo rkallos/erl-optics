@@ -10,6 +10,7 @@
     quantile_update.
 
 -record(model, {
+    epoch   =   0 :: non_neg_integer(),
     events  =  [] :: [op()],
     lenses  = #{} :: #{lens_name() => lens()},
     lens_state   = #{} :: map(),
@@ -21,7 +22,7 @@
 
 seq(Lenses, Lst) ->
     Model = lists:foldl(fun do/2, new(Lenses), Lst),
-    read_lenses(Model, 0).
+    read_lenses(Model).
 
 
 % private
@@ -108,11 +109,11 @@ populate_histo(Events, Buckets) ->
     Map4#{above => Above + V}.
 
 
-read_lens(Epoch) ->
-    fun(Lens, Acc) -> read_lens(Lens, Epoch, Acc) end.
+read_lens() ->
+    fun(Lens, Acc) -> read_lens(Lens, Acc) end.
 
 
-read_lens(Lens, _Epoch, Acc) ->
+read_lens(Lens, Acc) ->
     Name = erl_optics_lens:name(Lens),
     #{Name := Evts} = Acc,
     case erl_optics_lens:type(Lens) of
@@ -141,10 +142,10 @@ read_lens(Lens, _Epoch, Acc) ->
             Acc#{Name => 0.0}
     end.
 
-read_lenses(Model, Epoch) ->
+read_lenses(Model) ->
     #model{lenses = Lenses, lens_state = State, returns = Rets} = Model,
     LensState = lists:foldl(fun(Lens, Acc) ->
-        read_lens(Lens, Epoch, Acc)
+        read_lens(Lens, Acc)
     end, State, maps:values(Lenses)),
     {LensState, lists:reverse(Rets)}.
 
