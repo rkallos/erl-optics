@@ -80,8 +80,6 @@ lens_free(_K) ->
     ?nif_stub.
 optics_create() ->
     ?nif_stub.
-optics_epoch(_Optics) ->
-    ?nif_stub.
 optics_free(_Ptr) ->
     ?nif_stub.
 quantile_alloc(_Optics, _Name, _Target, _Estimate, _Adjustment) ->

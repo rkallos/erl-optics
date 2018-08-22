@@ -276,17 +276,6 @@ static ERL_NIF_TERM eo_optics_create(
     return enif_make_tuple2(env, atom_ok, ptr);
 }
 
-static ERL_NIF_TERM eo_optics_epoch(
-    ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
-{
-    struct optics *optics = get_optics(env, argv[0]);
-    if (!optics) return ERROR("get_optics");
-
-    size_t epoch = optics_epoch(optics);
-
-    return enif_make_int64(env, epoch);
-}
-
 static ERL_NIF_TERM eo_optics_free(
     ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
 {
@@ -471,7 +460,6 @@ static ErlNifFunc nif_funcs[] =
     {"dist_read", 1, eo_dist_read},
     {"gauge_read", 1, eo_gauge_read},
     {"histo_read", 1, eo_histo_read},
-    {"optics_epoch", 1, eo_optics_epoch},
     {"quantile_read", 1, eo_quantile_read},
 };
 
