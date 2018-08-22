@@ -307,7 +307,7 @@ static ERL_NIF_TERM eo_counter_read(
     struct optics_lens *lens = get_lens(env, argv[0]);
     if (!lens) return ERROR("get_lens");
 
-    int64_t val;
+    int64_t val = 0;
 
     switch(optics_counter_read(lens, optics_epoch(lens->optics), &val)) {
     case optics_err:
@@ -328,7 +328,7 @@ static ERL_NIF_TERM eo_dist_read(
     struct optics_lens *lens = get_lens(env, argv[0]);
     if (!lens) return ERROR("get_lens");
 
-    struct optics_dist dist;
+    struct optics_dist dist = {0};
 
     switch(optics_dist_read(lens, optics_epoch(lens->optics), &dist)) {
     case optics_err:
@@ -362,7 +362,7 @@ static ERL_NIF_TERM eo_gauge_read(
     struct optics_lens *lens = get_lens(env, argv[0]);
     if (!lens) return ERROR("get_lens");
 
-    double val;
+    double val = 0.0;
 
     switch(optics_gauge_read(lens, optics_epoch(lens->optics), &val)) {
     case optics_err:
@@ -383,7 +383,7 @@ static ERL_NIF_TERM eo_histo_read(
     struct optics_lens *lens = get_lens(env, argv[0]);
     if (!lens) return ERROR("get_lens");
 
-    struct optics_histo histo;
+    struct optics_histo histo = {0};
 
     switch(optics_histo_read(lens, optics_epoch(lens->optics), &histo)) {
     case optics_err:
@@ -418,7 +418,7 @@ static ERL_NIF_TERM eo_quantile_read(
     struct optics_lens *lens = get_lens(env, argv[0]);
     if (!lens) return ERROR("get_lens");
 
-    struct optics_quantile val;
+    struct optics_quantile val = {0};
 
     switch(optics_quantile_read(lens, optics_epoch(lens->optics), &val)) {
     case optics_err:
