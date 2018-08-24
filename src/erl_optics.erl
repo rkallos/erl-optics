@@ -68,6 +68,11 @@ lens_free(Key) ->
     foil:load(?NS).
 
 
+-spec quantile_update(binary(), number()) -> ok | {error, term()}.
+
+quantile_update(Key, Val) when is_integer(Val) ->
+    quantile_update(Key, float(Val));
+
 quantile_update(Key, Val) ->
     {ok, Ptr} = get_lens(Key),
     erl_optics_nif:quantile_update(Ptr, Val).
