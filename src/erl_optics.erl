@@ -8,6 +8,7 @@
     dist_record/2,
     gauge_set/2,
     histo_inc/2,
+    lens_update/2,
     lens_free/1,
     quantile_update/2,
 
@@ -57,6 +58,12 @@ histo_inc(Key, Val) when is_integer(Val) ->
 histo_inc(Key, Val) ->
     {ok, Ptr} = get_lens(Key),
     erl_optics_nif:histo_inc(Ptr, Val).
+
+
+-spec lens_update(erl_optics_lens:t(), number()) -> ok | {error, term()}.
+
+lens_update(Lens, Val) ->
+    erl_optics_lens:update(Lens, Val).
 
 
 -spec lens_free(binary()) -> ok | {error, term()}.
