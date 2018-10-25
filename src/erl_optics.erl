@@ -5,6 +5,8 @@
 -export([
     counter_inc/1,
     counter_inc/2,
+    counter_inc_alloc/1,
+    counter_inc_alloc/2,
     dist_record/2,
     gauge_set/2,
     histo_inc/2,
@@ -31,6 +33,32 @@ counter_inc(Key) ->
 counter_inc(Key, Amt) ->
     {ok, Ptr} = get_lens(Key),
     erl_optics_nif:counter_inc(Ptr, Amt).
+
+
+-spec counter_inc_alloc(binary()) -> ok | {error, term()}.
+
+counter_inc_alloc(Key) ->
+    counter_inc_alloc(Key, 1).
+
+-spec counter_inc_alloc(binary(), integer()) -> ok | {error, term()}.
+
+counter_inc_alloc(Key, Amt)->
+    case get_lens(Key) of
+	{ok, Ptr} ->
+	    io:fwrite("lens found\n"),
+	    erl_optics_nif:counter_inc(Ptr, Amt);
+        {error, key_not_found} ->
+	    io:fwrite("lens not found\n"),	    
+	    {ok, Ptr} = counter_alloc(Key),
+            foil:insert(?NS, Key, Ptr),
+	    ok = foil:load(?NS),
+	    erl_optics_nif:counter_inc(Ptr, Amt);
+	{error, Msg} ->
+	    {error, Msg};
+	_ ->
+	    {error, undefined}
+    end.
+
 
 
 -spec dist_record(binary(), float()) -> ok | {error, term()}.
@@ -72,7 +100,7 @@ lens_free(Key) ->
     {ok, Lens} = get_lens(Key),
     ok = erl_optics_nif:lens_free(Lens),
     foil:delete(?NS, Key),
-    foil:load(?NS).
+    ok = foil:load(?NS).
 
 
 -spec quantile_update(binary(), number()) -> ok | {error, term()}.
@@ -117,7 +145,7 @@ stop() ->
 %% private
 
 alloc_lenses([]) ->
-    foil:load(?NS);
+    ok = foil:load(?NS);
 
 alloc_lenses([Lens | Rest]) ->
     Name = erl_optics_lens:name(Lens),
