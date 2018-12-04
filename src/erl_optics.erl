@@ -5,14 +5,21 @@
 -export([
     counter_inc/1,
     counter_inc/2,
+    counter_inc_alloc/1,
+    counter_inc_alloc/2,
     dist_record/2,
+    dist_record_alloc/2,
+    dist_record_timing_now_us/2,
+    dist_record_timing_now/2,
     gauge_set/2,
+    gauge_set_alloc/2,
     histo_inc/2,
     lens_update/2,
     lens_free/1,
     quantile_update/2,
-
-    start/1,
+    quantile_update_timing_now/2,
+    quantile_update_timing_now_us/2,
+    start/2,
     stop/0
 ]).
 
@@ -33,12 +40,45 @@ counter_inc(Key, Amt) ->
     erl_optics_nif:counter_inc(Ptr, Amt).
 
 
+-spec counter_inc_alloc(binary()) -> ok | {error, term()}.
+
+counter_inc_alloc(Key) ->
+    counter_inc_alloc(Key, 1).
+
+-spec counter_inc_alloc(binary(), integer()) -> ok | {error, term()}.
+
+counter_inc_alloc(Key, Amt)->
+    {ok, OpticsPtr} = get_optics(),
+    {ok, Ptr} = erl_optics_nif:counter_alloc_get(OpticsPtr, Key),
+    erl_optics_nif:counter_inc(Ptr, Amt),
+    erl_optics_nif:lens_close(Ptr).
+
+
 -spec dist_record(binary(), float()) -> ok | {error, term()}.
 
 dist_record(Key, Val) ->
     {ok, Ptr} = get_lens(Key),
     erl_optics_nif:dist_record(Ptr, Val).
 
+-spec dist_record_alloc(binary(), float()) -> ok | {error, term()}.
+
+dist_record_alloc(Key, Val) ->
+    {ok, OpticsPtr} = get_optics(),
+    {ok, Ptr} = erl_optics_nif:dist_alloc_get(OpticsPtr, Key),
+    erl_optics_nif:dist_record(Ptr, Val),
+    erl_optics_nif:lens_close(Ptr).
+
+-spec dist_record_timing_now_us(binary(), float()) -> ok | {error, term()}.
+
+dist_record_timing_now_us(Key, Stamp) ->
+    Delta = timer:now_diff(os:timestamp(), Stamp),
+    dist_record(Key, Delta).
+
+-spec dist_record_timing_now(binary(), float()) -> ok | {error, term()}.
+
+dist_record_timing_now(Key, Stamp) ->
+    Delta = timer:now_diff(os:timestam(), Stamp) / 1000.0,
+    dist_record(Key, Delta).
 
 -spec gauge_set(binary(), number()) -> ok | {error, term()}.
 
@@ -48,6 +88,17 @@ gauge_set(Key, Val) when is_integer(Val) ->
 gauge_set(Key, Val) ->
     {ok, Ptr} = get_lens(Key),
     erl_optics_nif:gauge_set(Ptr, Val).
+
+-spec gauge_set_alloc(binary(), number()) -> ok | {error, term()}.
+
+gauge_set_alloc(Key, Val) when is_integer(Val) ->
+    gauge_set_alloc(Key, float(Val));
+
+gauge_set_alloc(Key, Val) ->
+    {ok, OpticsPtr} = get_optics(),
+    {ok, Ptr} = erl_optics_nif:gauge_alloc_get(OpticsPtr, Key),
+    erl_optics_nif:gauge_set(Ptr, Val),
+    erl_optics_nif:lens_close(Ptr).
 
 
 -spec histo_inc(binary(), number()) -> ok | {error, term()}.
@@ -72,7 +123,7 @@ lens_free(Key) ->
     {ok, Lens} = get_lens(Key),
     ok = erl_optics_nif:lens_free(Lens),
     foil:delete(?NS, Key),
-    foil:load(?NS).
+    ok = foil:load(?NS).
 
 
 -spec quantile_update(binary(), number()) -> ok | {error, term()}.
@@ -85,6 +136,19 @@ quantile_update(Key, Val) ->
     erl_optics_nif:quantile_update(Ptr, Val).
 
 
+-spec quantile_update_timing_now(binary(), erlang:timestamp()) -> ok | {error, term()}.
+
+quantile_update_timing_now(Key, Stamp) ->
+    Delta = timer:now_diff(os:timestamp(), Stamp) / 1000.0,
+    quantile_update(Key, Delta).
+
+
+-spec quantile_update_timing_now_us(binary(), erlang:timestamp()) -> ok | {error, term()}.
+
+quantile_update_timing_now_us(Key, Stamp) ->
+    Delta = timer:now_diff(os:timestamp(), Stamp),
+    quantile_update(Key, Delta).
+
 -spec start() -> ok.
 
 start() ->
@@ -94,14 +158,14 @@ start() ->
         erl_optics_lens:gauge(<<"bob_the_gauge">>),
         erl_optics_lens:histo(<<"bob_the_histo">>, [10.0, 20.0, 30.0, 40.0])
     ],
-    start(Lenses).
+    start(<<"erl_optics">>, Lenses).
 
--spec start([erl_optics_lens:desc()]) -> ok.
+-spec start(binary(), [erl_optics_lens:desc()]) -> ok.
 
-start(Lenses) ->
+start(Prefix, Lenses) ->
     case create_foil() of
         ok ->
-            ok = create_optics(),
+            ok = create_optics(Prefix),
             ok = alloc_lenses(Lenses);
         Err -> Err
     end.
@@ -117,7 +181,7 @@ stop() ->
 %% private
 
 alloc_lenses([]) ->
-    foil:load(?NS);
+    ok = foil:load(?NS);
 
 alloc_lenses([Lens | Rest]) ->
     Name = erl_optics_lens:name(Lens),
@@ -175,7 +239,10 @@ create_foil() ->
     end.
 
 create_optics() ->
-    OpticsStatus = erl_optics_nif:optics_create(),
+  create_optics(<<"erl_optics">>).
+
+create_optics(Name) ->
+    OpticsStatus = erl_optics_nif:optics_create(Name),
     case OpticsStatus of
         {ok, Ptr} ->
             ok = foil:insert(?MODULE, optics, Ptr),

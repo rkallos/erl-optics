@@ -5,15 +5,19 @@
 
 -export([
     counter_alloc/2,
+    counter_alloc_get/2,
     counter_inc/2,
     dist_alloc/2,
+    dist_alloc_get/2,
     dist_record/2,
     gauge_alloc/2,
+    gauge_alloc_get/2,
     gauge_set/2,
     histo_alloc/3,
     histo_inc/2,
     lens_free/1,
-    optics_create/0,
+    lens_close/1,
+    optics_create/1,
     optics_free/1,
     quantile_alloc/5,
     quantile_update/2
@@ -54,17 +58,23 @@ nif_stub_error(Line) ->
 
 counter_alloc(_Optics, _Name) ->
     ?nif_stub.
+counter_alloc_get(_Optics, _Name) ->
+    ?nif_stub.
 counter_inc(_K, _V) ->
     ?nif_stub.
 counter_read(_Lens) ->
     ?nif_stub.
 dist_alloc(_Optics, _Name) ->
     ?nif_stub.
+dist_alloc_get(_Optics, _Name) ->
+    ?nif_stub.
 dist_read(_Lens) ->
     ?nif_stub.
 dist_record(_K, _V) ->
     ?nif_stub.
 gauge_alloc(_Optics, _Name) ->
+    ?nif_stub.
+gauge_alloc_get(_Optics, _Name) ->
     ?nif_stub.
 gauge_read(_Lens) ->
     ?nif_stub.
@@ -78,7 +88,9 @@ histo_read(_Lens) ->
     ?nif_stub.
 lens_free(_K) ->
     ?nif_stub.
-optics_create() ->
+lens_close(_K) ->
+    ?nif_stub.
+optics_create(_Name) ->
     ?nif_stub.
 optics_free(_Ptr) ->
     ?nif_stub.
