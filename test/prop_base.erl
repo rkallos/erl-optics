@@ -21,6 +21,7 @@ check({Lenses, Seq}) ->
     ErlModel =:= CModel.
 
 
+
 %% Generators
 
 error_event(Lenses) ->
@@ -116,3 +117,5 @@ seq() ->
         UniqueLenses = maps:values(Map),
         {UniqueLenses, non_empty(list(event(maps:values(Map))))}
     end).
+
+
