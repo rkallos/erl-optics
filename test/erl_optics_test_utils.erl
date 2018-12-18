@@ -5,7 +5,7 @@
 ]).
 
 seq(Lenses, Lst) ->
-    erl_optics:start(Lenses),
+    erl_optics:start(<<"">>, Lenses),
     Returns = lists:map(fun(Evt) ->
         case catch do(Evt) of
             ok -> ok;
@@ -37,29 +37,20 @@ do({quantile_update, Key, Val}) ->
 
 
 read_lenses(Lenses) ->
-    lists:foldl(fun(Lens, Acc) ->
-        read_lens(Lens, Acc)
+    {ok, PollMap} = erl_optics:poll(),
+    lists:foldl(fun (Lens, Acc) ->
+        Name = erl_optics_lens:name(Lens),
+        Val = maps:get(Name, PollMap),
+        case erl_optics_lens:type(Lens) of
+            counter ->
+                Acc#{Name => Val};
+            dist ->
+                Acc#{Name => #{n => maps:get(n, Val), max => maps:get(max, Val)}};
+            gauge ->
+                Acc#{Name => Val};
+            histo ->
+                Acc#{Name => Val};
+            quantile ->
+                Acc#{Name => 0.0}
+        end
     end, #{}, Lenses).
-
-
-read_lens(Lens, Acc) ->
-    Name = erl_optics_lens:name(Lens),
-    {ok, Ptr} = erl_optics:get_lens(Name),
-    case erl_optics_lens:type(Lens) of
-        counter ->
-            Acc#{Name => erl_optics_nif:counter_read(Ptr)};
-        dist ->
-            Map0 = erl_optics_nif:dist_read(Ptr),
-            % Given optics's PRNG-based reservoir eviction, .n and .max % are really the
-            % only two values that can be tested deterministically
-            Map = maps:with([n, max], Map0),
-            Acc#{Name => Map};
-        gauge ->
-            Acc#{Name => erl_optics_nif:gauge_read(Ptr)};
-        histo ->
-            Acc#{Name => erl_optics_nif:histo_read(Ptr)};
-        quantile ->
-            % Can't check in Erlang due to PRNG-based updating
-            _Val = erl_optics_nif:quantile_read(Ptr),
-            Acc#{Name => 0.0}
-    end.
