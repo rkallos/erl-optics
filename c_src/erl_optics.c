@@ -389,8 +389,13 @@ static void backend_eo (void *ctx, enum optics_poll_type type, const struct opti
 
   ERL_NIF_TERM key;
   unsigned char * bin_key;
-  bin_key = enif_make_new_binary(m->env, strlen(poll->key), &key);
-  strncpy((char *)bin_key, poll->key, strlen(poll->key));
+  size_t prefix_len = strlen(poll->prefix);
+  size_t key_len = strlen(poll->key);
+  size_t full_key_len = prefix_len + key_len + 1;
+  bin_key = enif_make_new_binary(m->env, full_key_len, &key);
+  memcpy(bin_key, poll->prefix, prefix_len);
+  bin_key[prefix_len] = '.';
+  memcpy(bin_key + prefix_len + 1, poll->key, key_len);
 
   ERL_NIF_TERM val;
 
