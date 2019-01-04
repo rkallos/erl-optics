@@ -5,7 +5,7 @@
 ]).
 
 seq(Lenses, Lst) ->
-    erl_optics:start(<<"">>, Lenses),
+    erl_optics:start(<<"test">>, Lenses),
     Returns = lists:map(fun(Evt) ->
         case catch do(Evt) of
             ok -> ok;
@@ -40,7 +40,7 @@ read_lenses(Lenses) ->
     {ok, PollMap} = erl_optics:poll(),
     lists:foldl(fun (Lens, Acc) ->
         Name = erl_optics_lens:name(Lens),
-        Val = maps:get(Name, PollMap),
+        Val = maps:get(list_to_binary([<<"test">>, $., Name]), PollMap),
         case erl_optics_lens:type(Lens) of
             counter ->
                 Acc#{Name => Val};
