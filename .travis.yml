@@ -1,0 +1,17 @@
+language: erlang
+notifications:
+  email: false
+otp_release:
+  - 21.2
+sudo: required
+dist: xenial
+before_install:
+- sudo add-apt-repository "deb http://us.archive.ubuntu.com/ubuntu/ xenial main universe multiverse"
+- sudo add-apt-repository "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-5.0 main"
+- sudo apt-get update -qq
+install:
+- sudo apt-get --allow-unauthenticated -y install ninja-build libdaemon-dev libbsd-dev libmicrohttpd-dev clang-tidy-5.0 libclang-5.0-dev
+- git clone https://github.com/RAttab/optics && pushd optics && cmake . && make && sudo make install && popd
+- sudo ldconfig
+script:
+- ./rebar3 compile && ./rebar3 as test eunit && ./rebar3 as test proper && ./rebar3 as test dialyzer
