@@ -74,7 +74,7 @@ dist_record_timing_now_us(Key, Stamp) ->
 -spec dist_record_timing_now(binary(), erlang:timestamp()) -> ok | {error, term()}.
 
 dist_record_timing_now(Key, Stamp) ->
-    Delta = float(timer:now_diff(os:timestam(), Stamp)) / 1000.0,
+    Delta = float(timer:now_diff(os:timestamp(), Stamp)) / 1000.0,
     dist_record(Key, Delta).
 
 -spec gauge_set(binary(), number()) -> ok | {error, term()}.
