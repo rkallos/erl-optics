@@ -53,7 +53,7 @@ event(Lenses) ->
     ]).
 
 
-histo_buckets(Len) -> vector(Len, non_neg_float()).
+histo_buckets(Len) -> vector(Len, non_neg_integer()).
 
 
 lens() ->
@@ -117,5 +117,3 @@ seq() ->
         UniqueLenses = maps:values(Map),
         {UniqueLenses, non_empty(list(event(maps:values(Map))))}
     end).
-
-

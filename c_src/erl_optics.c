@@ -12,6 +12,11 @@ static ERL_NIF_TERM atom_quantile;
 static ERL_NIF_TERM atom_sample;
 static ERL_NIF_TERM atom_sample_count;
 static ERL_NIF_TERM atom_count;
+static ERL_NIF_TERM atom_counter;
+static ERL_NIF_TERM atom_gauge;
+static ERL_NIF_TERM atom_dist;
+static ERL_NIF_TERM atom_quantile;
+static ERL_NIF_TERM atom_histo;
 
 static int load(ErlNifEnv *env, void **priv_data, ERL_NIF_TERM load_info) {
     atom_ok = enif_make_atom(env, "ok");
@@ -26,6 +31,11 @@ static int load(ErlNifEnv *env, void **priv_data, ERL_NIF_TERM load_info) {
     atom_sample = enif_make_atom(env, "sample");
     atom_sample_count = enif_make_atom(env, "sample_count");
     atom_count = enif_make_atom(env, "count");
+    atom_counter = enif_make_atom(env, "counter");
+    atom_gauge = enif_make_atom(env, "gauge");
+    atom_dist = enif_make_atom(env, "dist");
+    atom_histo = enif_make_atom(env, "histo");
+    atom_quantile = enif_make_atom(env, "quantile");
     return 0;
 }
 
@@ -239,7 +249,7 @@ static ERL_NIF_TERM eo_histo_alloc(
     if (!enif_get_list_length(env, argv[2], &buckets_len))
         return ERROR("get_list_length");
 
-    double *buckets = enif_alloc(buckets_len * sizeof(double));
+    uint64_t *buckets = enif_alloc(buckets_len * sizeof(uint64_t));
     if (!buckets) return ERROR("enif_alloc");
 
     ERL_NIF_TERM head, tail;
@@ -247,7 +257,7 @@ static ERL_NIF_TERM eo_histo_alloc(
 
     size_t i = 0;
     do {
-        assert(enif_get_double(env, head, &buckets[i]));
+        assert(enif_get_uint64(env, head, &buckets[i]));
         ++i;
     } while(enif_get_list_cell(env, tail, &head, &tail));
 
@@ -387,20 +397,34 @@ static void backend_eo (void *ctx, enum optics_poll_type type, const struct opti
 
   struct map_ctx *m = (struct map_ctx *) ctx;
 
+  ERL_NIF_TERM name;
+  ERL_NIF_TERM prefix;
   ERL_NIF_TERM key;
-  unsigned char * bin_key;
-  bin_key = enif_make_new_binary(m->env, strlen(poll->key), &key);
-  strncpy((char *)bin_key, poll->key, strlen(poll->key));
+  unsigned char * bin_name;
+  unsigned char * bin_prefix;
+
+  size_t name_len = strlen(poll->key);
+  size_t prefix_len = strlen(poll->prefix);
+
+  bin_name = enif_make_new_binary(m->env, name_len, &name);
+  memcpy(bin_name, poll->key, name_len);
+  bin_prefix = enif_make_new_binary(m->env, prefix_len, &prefix);
+  memcpy(bin_prefix, poll->prefix, prefix_len);
+  key = enif_make_tuple2(m->env, prefix, name);
 
   ERL_NIF_TERM val;
 
   switch(poll->type) {
   case optics_counter :{
-    val = enif_make_uint64(m->env, poll->value.counter);
+    val = enif_make_tuple2(m->env,
+                           atom_counter,
+                           enif_make_uint64(m->env, poll->value.counter));
     break;
   }
   case optics_gauge :{
-    val = enif_make_double(m->env, poll->value.gauge);
+    val = enif_make_tuple2(m->env,
+                           atom_gauge,
+                           enif_make_double(m->env, poll->value.gauge));
     break;
   }
   case optics_quantile :{
@@ -410,12 +434,13 @@ static void backend_eo (void *ctx, enum optics_poll_type type, const struct opti
     ERL_NIF_TERM sample = enif_make_double(m->env, oq.sample);
     ERL_NIF_TERM sample_count = enif_make_uint64(m->env, oq.sample_count);
     ERL_NIF_TERM count = enif_make_uint64(m->env, oq.count);
+    ERL_NIF_TERM map = enif_make_new_map(m->env);
 
-    val = enif_make_new_map(m->env);
-    enif_make_map_put(m->env, val, atom_quantile, quantile, &val);
-    enif_make_map_put(m->env, val, atom_sample, sample, &val);
-    enif_make_map_put(m->env, val, atom_sample_count, sample_count, &val);
-    enif_make_map_put(m->env, val, atom_count, count, &val);
+    enif_make_map_put(m->env, map, atom_quantile, quantile, &map);
+    enif_make_map_put(m->env, map, atom_sample, sample, &map);
+    enif_make_map_put(m->env, map, atom_sample_count, sample_count, &map);
+    enif_make_map_put(m->env, map, atom_count, count, &map);
+    val = enif_make_tuple2(m->env, atom_quantile, map);
     break;
   }
   case optics_dist :{
@@ -426,12 +451,14 @@ static void backend_eo (void *ctx, enum optics_poll_type type, const struct opti
     ERL_NIF_TERM v_p99 = enif_make_double(m->env, dist.p99);
     ERL_NIF_TERM v_max = enif_make_double(m->env, dist.max);
 
-    val = enif_make_new_map(m->env);
-    enif_make_map_put(m->env, val, atom_n, v_n, &val);
-    enif_make_map_put(m->env, val, atom_p50, v_p50, &val);
-    enif_make_map_put(m->env, val, atom_p90, v_p90, &val);
-    enif_make_map_put(m->env, val, atom_p99, v_p99, &val);
-    enif_make_map_put(m->env, val, atom_max, v_max, &val);
+    ERL_NIF_TERM map;
+    map = enif_make_new_map(m->env);
+    enif_make_map_put(m->env, map, atom_n, v_n, &map);
+    enif_make_map_put(m->env, map, atom_p50, v_p50, &map);
+    enif_make_map_put(m->env, map, atom_p90, v_p90, &map);
+    enif_make_map_put(m->env, map, atom_p99, v_p99, &map);
+    enif_make_map_put(m->env, map, atom_max, v_max, &map);
+    val = enif_make_tuple2(m->env, atom_dist, map);
     break;
   }
   case optics_histo :{
@@ -439,20 +466,22 @@ static void backend_eo (void *ctx, enum optics_poll_type type, const struct opti
     ERL_NIF_TERM below = enif_make_uint64(m->env, histo.below);
     ERL_NIF_TERM above = enif_make_uint64(m->env, histo.above);
 
-    val = enif_make_new_map(m->env);
-    enif_make_map_put(m->env, val, atom_below, below, &val);
-    enif_make_map_put(m->env, val, atom_above, above, &val);
+    ERL_NIF_TERM map;
+    map = enif_make_new_map(m->env);
+    enif_make_map_put(m->env, map, atom_below, below, &map);
+    enif_make_map_put(m->env, map, atom_above, above, &map);
 
     for(size_t i = 0; i < histo.buckets_len - 1; ++i) {
-      ERL_NIF_TERM k = enif_make_double(m->env, histo.buckets[i]);
+      ERL_NIF_TERM k0 = enif_make_uint64(m->env, histo.buckets[i]);
+      ERL_NIF_TERM k1 = enif_make_uint64(m->env, histo.buckets[i + 1]);
+      ERL_NIF_TERM k = enif_make_tuple2(m->env, k0, k1);
       ERL_NIF_TERM v = enif_make_uint64(m->env, histo.counts[i]);
-      enif_make_map_put(m->env, val, k, v, &val);
+      enif_make_map_put(m->env, map, k, v, &map);
     }
-
+    val = enif_make_tuple2(m->env, atom_histo, map);
     break;
   }
   }
-
   enif_make_map_put( m->env , m->map, key, val, &(m->map));
 }
 
