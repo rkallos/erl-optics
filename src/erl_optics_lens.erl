@@ -11,8 +11,6 @@
     histo/2,
     name/1,
     quantile/4,
-    multiple_quantile/4,
-    triple_quantile/3,
     quantile_adjustment_value/1,
     quantile_estimate/1,
     quantile_target/1,
@@ -105,21 +103,6 @@ quantile(Name, Target, Estimate, AdjVal) ->
     },
     Fun = fun(Val) -> erl_optics:quantile_update(Name, Val) end,
     #lens{name = Name, type = quantile, f = Fun, ext = Ext}.
-
-
--spec multiple_quantile(binary(), list(), float(), float()) -> list().
-
-multiple_quantile(Name, KeyTargetList, Estimate, AdjVal)->
-    lists:map(fun({Key, Target}) -> erl_optics_lens:quantile(list_to_binary([Name, Key]), Target, Estimate, AdjVal) end, KeyTargetList).
-
--spec triple_quantile(lens_name(), float(), float()) -> list().
-
-triple_quantile(Name, Estimate, AdjVal)->
-    [quantile(list_to_binary([Name, <<".q50">>]), 0.5, Estimate, AdjVal),
-     quantile(list_to_binary([Name, <<".q95">>]), 0.95, Estimate, AdjVal),
-     quantile(list_to_binary([Name, <<".q99">>]), 0.99, Estimate, AdjVal)].
-
-
 
 
 -spec quantile_adjustment_value(lens()) -> float().
