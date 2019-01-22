@@ -249,7 +249,7 @@ static ERL_NIF_TERM eo_histo_alloc(
     if (!enif_get_list_length(env, argv[2], &buckets_len))
         return ERROR("get_list_length");
 
-    double *buckets = enif_alloc(buckets_len * sizeof(double));
+    uint64_t *buckets = enif_alloc(buckets_len * sizeof(uint64_t));
     if (!buckets) return ERROR("enif_alloc");
 
     ERL_NIF_TERM head, tail;
@@ -257,7 +257,7 @@ static ERL_NIF_TERM eo_histo_alloc(
 
     size_t i = 0;
     do {
-        assert(enif_get_double(env, head, &buckets[i]));
+        assert(enif_get_uint64(env, head, &buckets[i]));
         ++i;
     } while(enif_get_list_cell(env, tail, &head, &tail));
 
@@ -470,7 +470,9 @@ static void backend_eo (void *ctx, enum optics_poll_type type, const struct opti
     enif_make_map_put(m->env, map, atom_above, above, &map);
 
     for(size_t i = 0; i < histo.buckets_len - 1; ++i) {
-      ERL_NIF_TERM k = enif_make_double(m->env, histo.buckets[i]);
+      ERL_NIF_TERM k0 = enif_make_uint64(m->env, histo.buckets[i]);
+      ERL_NIF_TERM k1 = enif_make_uint64(m->env, histo.buckets[i + 1]);
+      ERL_NIF_TERM k = enif_make_tuple2(m->env, k0, k1);
       ERL_NIF_TERM v = enif_make_uint64(m->env, histo.counts[i]);
       enif_make_map_put(m->env, map, k, v, &map);
     }

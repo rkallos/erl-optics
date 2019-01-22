@@ -18,7 +18,7 @@
     update/2
 ]).
 
--type histo_buckets() :: list(float()).
+-type histo_buckets() :: list({integer(), integer()}).
 
 -record(quantile_args, {
     adjustment_value = undefined :: float(),
@@ -81,7 +81,7 @@ gauge(Name) when is_binary(Name) ->
     #lens{name = Name, type = gauge, f = Fun}.
 
 
--spec histo(lens_name(), list(float())) -> lens().
+-spec histo(lens_name(), list(integer())) -> lens().
 
 histo(Name, Buckets) when is_binary(Name) ->
     Fun = fun(Val) -> erl_optics:histo_inc(Name, Val) end,
