@@ -13,7 +13,6 @@
     erl_optics_lens,
     erl_optics_nif
   ]},
-
   {maintainers, []},
   {licenses, ["Apache 2.0"]},
   {links, []}
