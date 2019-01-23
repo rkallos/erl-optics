@@ -33,8 +33,13 @@ counter_inc(Key) ->
 -spec counter_inc(binary(), integer()) -> ok | {error, term()}.
 
 counter_inc(Key, Amt) ->
-    {ok, Ptr} = get_lens(Key),
-    erl_optics_nif:counter_inc(Ptr, Amt).
+    case get_lens(Key) of
+        {ok, Ptr} ->
+            erl_optics_nif:counter_inc(Ptr, Amt);
+        {error, Msg} ->
+            {error, Msg}
+    end.
+
 
 
 -spec counter_inc_alloc(binary()) -> ok | {error, term()}.
@@ -54,8 +59,12 @@ counter_inc_alloc(Key, Amt)->
 -spec dist_record(binary(), float()) -> ok | {error, term()}.
 
 dist_record(Key, Val) ->
-    {ok, Ptr} = get_lens(Key),
-    erl_optics_nif:dist_record(Ptr, Val).
+    case get_lens(Key) of
+        {ok, Ptr} ->
+            erl_optics_nif:dist_record(Ptr, Val);
+        {error, Msg} ->
+            {error, Msg}
+    end.
 
 -spec dist_record_alloc(binary(), float()) -> ok | {error, term()}.
 
@@ -83,8 +92,12 @@ gauge_set(Key, Val) when is_integer(Val) ->
     gauge_set(Key, float(Val));
 
 gauge_set(Key, Val) ->
-    {ok, Ptr} = get_lens(Key),
-    erl_optics_nif:gauge_set(Ptr, Val).
+    case get_lens(Key) of
+        {ok, Ptr} ->
+            erl_optics_nif:gauge_set(Ptr, Val);
+        {error, Msg} ->
+            {error, Msg}
+    end.
 
 -spec gauge_set_alloc(binary(), number()) -> ok | {error, term()}.
 
@@ -104,8 +117,12 @@ histo_inc(Key, Val) when is_integer(Val) ->
     histo_inc(Key, float(Val));
 
 histo_inc(Key, Val) ->
-    {ok, Ptr} = get_lens(Key),
-    erl_optics_nif:histo_inc(Ptr, Val).
+     case get_lens(Key) of
+         {ok, Ptr} ->
+             erl_optics_nif:histo_inc(Ptr, Val);
+         {error, Msg} ->
+             {error, Msg}
+     end.
 
 
 -spec lens_update(erl_optics_lens:t(), number()) -> ok | {error, term()}.
@@ -129,8 +146,12 @@ quantile_update(Key, Val) when is_integer(Val) ->
     quantile_update(Key, float(Val));
 
 quantile_update(Key, Val) ->
-    {ok, Ptr} = get_lens(Key),
-    erl_optics_nif:quantile_update(Ptr, Val).
+    case get_lens(Key) of
+        {ok, Ptr} ->
+            erl_optics_nif:quantile_update(Ptr, Val);
+        {error, Msg} ->
+            {error, Msg}
+    end.
 
 
 -spec quantile_update_timing_now(binary(), erlang:timestamp()) -> ok | {error, term()}.
