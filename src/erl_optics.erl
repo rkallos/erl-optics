@@ -56,7 +56,9 @@ counter_inc_alloc(Key, Amt)->
     erl_optics_nif:lens_close(Ptr).
 
 
--spec dist_record(binary(), float()) -> ok | {error, term()}.
+-spec dist_record(binary(), number()) -> ok | {error, term()}.
+dist_record(Key, Val) when is_integer(Val) ->
+    dist_record(Key, float(Val));
 
 dist_record(Key, Val) ->
     case get_lens(Key) of
