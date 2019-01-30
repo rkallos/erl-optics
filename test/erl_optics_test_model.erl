@@ -62,7 +62,7 @@ determine_histo_key(Event, Keys) ->
 
 above_or_below(Event, Keys) ->
     Above = lists:dropwhile(fun(Key) ->
-        {Min, Max} = Key,
+        {_Min, Max} = Key,
         Event < Max end, Keys),
     case Above of
         [] ->

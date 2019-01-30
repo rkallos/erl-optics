@@ -479,6 +479,8 @@ static void backend_eo (void *ctx, enum optics_poll_type type, const struct opti
     val = enif_make_tuple2(m->env, atom_histo, map);
     break;
   }
+  default:
+    return;
   }
   enif_make_map_put( m->env , m->map, key, val, &(m->map));
 }
