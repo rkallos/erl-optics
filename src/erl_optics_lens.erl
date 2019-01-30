@@ -88,6 +88,7 @@ histo(Name, Buckets) when is_binary(Name) ->
     #lens{name = Name, type = histo, f = Fun, ext = Buckets}.
 
 
+
 -spec name(lens()) -> binary().
 
 name(#lens{name = Name}) -> Name.

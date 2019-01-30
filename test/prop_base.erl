@@ -17,6 +17,7 @@ prop_test() ->
 check({Lenses, Seq}) ->
     ErlModel = erl_optics_test_model:seq(Lenses, Seq),
     CModel = erl_optics_test_utils:seq(Lenses, Seq),
+    %io:format("~p~n", [#{erl => ErlModel, c => CModel, seq => Seq, lenses => Lenses}]),
     ErlModel =:= CModel.
 
 
@@ -54,6 +55,9 @@ event(Lenses) ->
 
 histo_buckets(Len) -> vector(Len, non_neg_integer()).
 
+no_single_histo_buckets(Len) ->
+    ?SUCHTHAT(Buckets, histo_buckets(Len), length(lists:usort(Buckets)) > 2).
+
 
 lens() ->
     ?LET([Name, Type], [lens_name(), erl_optics_lens:lens_type()], begin
@@ -65,7 +69,7 @@ lens() ->
             gauge ->
                 erl_optics_lens:gauge(Name);
             histo ->
-                ?LAZY(?LET([Buckets], [histo_buckets(8)],
+                ?LAZY(?LET([Buckets], [no_single_histo_buckets(8)],
                     erl_optics_lens:histo(Name, lists:usort(Buckets))));
             quantile ->
                 ?LAZY(?LET([T, E, A], [non_neg_float(), non_neg_float(), non_neg_float()],
