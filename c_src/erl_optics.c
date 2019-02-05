@@ -17,6 +17,16 @@ static ERL_NIF_TERM atom_gauge;
 static ERL_NIF_TERM atom_dist;
 static ERL_NIF_TERM atom_quantile;
 static ERL_NIF_TERM atom_histo;
+static struct optics_poller *poller;
+
+struct map_ctx {
+  ErlNifEnv *env;
+  ERL_NIF_TERM map;
+};
+
+static void backend_eo (void *ctx, enum optics_poll_type type, const struct optics_poll *poll);
+static void backend_free_eo(void *ctx);
+static struct map_ctx *ctx;
 
 static int load(ErlNifEnv *env, void **priv_data, ERL_NIF_TERM load_info) {
     atom_ok = enif_make_atom(env, "ok");
@@ -36,7 +46,17 @@ static int load(ErlNifEnv *env, void **priv_data, ERL_NIF_TERM load_info) {
     atom_dist = enif_make_atom(env, "dist");
     atom_histo = enif_make_atom(env, "histo");
     atom_quantile = enif_make_atom(env, "quantile");
+    poller = optics_poller_alloc();
+    ctx = enif_alloc(sizeof(struct map_ctx));
+    if (poller) {
+      optics_poller_backend(poller, (void *) ctx, backend_eo, backend_free_eo);
+    }
     return 0;
+}
+
+static void unload(ErlNifEnv *env, void *priv_data){
+    if (poller) optics_poller_free(poller);
+    enif_free(ctx);
 }
 
 static ERL_NIF_TERM eo_counter_alloc(
@@ -386,11 +406,6 @@ static ERL_NIF_TERM eo_optics_free(
     return atom_ok;
 }
 
-struct map_ctx {
-  ErlNifEnv *env;
-  ERL_NIF_TERM map;
-};
-
 static void backend_eo (void *ctx, enum optics_poll_type type, const struct optics_poll *poll)
 {
   if (type != optics_poll_metric) return;
@@ -494,15 +509,12 @@ static ERL_NIF_TERM eo_optics_poll(
 {
     struct optics *optics = get_optics(env, argv[0]);
     if (!optics) return ERROR("get_optics");
-    struct optics_poller *poller = optics_poller_alloc();
+    if (!poller) return ERROR("poller_allocation_error");
 
-    struct map_ctx *ctx = enif_alloc(sizeof(struct map_ctx));
     ctx->env = env;
     ctx->map = enif_make_new_map(env);
 
-    optics_poller_backend(poller, (void *) ctx, backend_eo, backend_free_eo);
     optics_poller_poll(poller);
-
     return ctx->map;
 }
 
@@ -533,6 +545,6 @@ static ErlNifFunc nif_funcs[] =
     {"optics_poll", 1, eo_optics_poll},
 };
 
-ERL_NIF_INIT(erl_optics_nif, nif_funcs, load, NULL, NULL, NULL)
+ERL_NIF_INIT(erl_optics_nif, nif_funcs, load, NULL, NULL, unload)
 
 // TODO: Pre-create atoms?
