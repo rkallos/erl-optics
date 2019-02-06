@@ -11,8 +11,11 @@
   {modules, [
     erl_optics,
     erl_optics_lens,
-    erl_optics_nif
+    erl_optics_nif,
+    erl_optics_server,
+    erl_optics_sup
   ]},
+  {mod, {erl_optics_app, []}},
   {maintainers, []},
   {licenses, ["Apache 2.0"]},
   {links, []}

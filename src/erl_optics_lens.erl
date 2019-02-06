@@ -18,7 +18,7 @@
     update/2
 ]).
 
--type histo_buckets() :: list({integer(), integer()}).
+-type histo_buckets() :: list(integer()).
 
 -record(quantile_args, {
     adjustment_value = undefined :: float(),
