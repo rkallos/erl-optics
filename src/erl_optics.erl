@@ -21,7 +21,8 @@
     quantile_update_timing_now_us/2,
     start/2,
     stop/0,
-    poll/0
+    poll/0,
+    poll_carbon/0
 ]).
 
 
@@ -192,6 +193,16 @@ stop() ->
 poll() ->
     case get_optics() of
         {ok, Ptr} -> {ok, erl_optics_nif:optics_poll(Ptr)};
+        Err -> Err
+    end.
+
+-spec poll_carbon() -> ok | {error, term()}.
+
+poll_carbon() ->
+    case get_optics() of
+        {ok, Ptr} ->
+            erl_optics_nif:optics_poll_carbon(Ptr),
+            ok;
         Err -> Err
     end.
 

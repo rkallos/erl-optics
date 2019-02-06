@@ -21,7 +21,8 @@
     optics_free/1,
     optics_poll/1,
     quantile_alloc/5,
-    quantile_update/2
+    quantile_update/2,
+    optics_poll_carbon/1
 ]).
 
 %% THIS MODULE SHOULD ONLY BE CALLED FROM erl_optics.erl
@@ -83,4 +84,6 @@ optics_poll(_optics) ->
 quantile_alloc(_Optics, _Name, _Target, _Estimate, _Adjustment) ->
     ?nif_stub.
 quantile_update(_K, _V) ->
+    ?nif_stub.
+optics_poll_carbon(_Optics) ->
     ?nif_stub.

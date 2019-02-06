@@ -48,9 +48,13 @@ static int load(ErlNifEnv *env, void **priv_data, ERL_NIF_TERM load_info) {
     atom_quantile = enif_make_atom(env, "quantile");
     poller = optics_poller_alloc();
     ctx = enif_alloc(sizeof(struct map_ctx));
-    if (poller) {
-      optics_poller_backend(poller, (void *) ctx, backend_eo, backend_free_eo);
-    }
+    /* if (poller) { */
+    /*   optics_poller_backend(poller, (void *) ctx, backend_eo, backend_free_eo); */
+    /* } */
+
+    const char *host = "localhost";
+    const char *port = "1055";
+    optics_dump_carbon(poller, host, port);
     return 0;
 }
 
@@ -518,6 +522,18 @@ static ERL_NIF_TERM eo_optics_poll(
     return ctx->map;
 }
 
+static ERL_NIF_TERM eo_optics_poll_carbon(
+    ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+{
+    struct optics *optics = get_optics(env, argv[0]);
+    if (!optics) return ERROR("get_optics");
+    if (!poller) return ERROR("poller_allocation_error");
+
+
+    optics_poller_poll(poller);
+    return atom_ok;
+}
+
 static ErlNifFunc nif_funcs[] =
 {
     {"counter_alloc", 2, eo_counter_alloc},
@@ -543,6 +559,7 @@ static ErlNifFunc nif_funcs[] =
     {"quantile_alloc", 5, eo_quantile_alloc},
     {"quantile_update", 2, eo_quantile_update},
     {"optics_poll", 1, eo_optics_poll},
+    {"optics_poll_carbon", 1, eo_optics_poll_carbon},
 };
 
 ERL_NIF_INIT(erl_optics_nif, nif_funcs, load, NULL, NULL, unload)
