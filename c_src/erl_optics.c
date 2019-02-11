@@ -18,6 +18,8 @@ static ERL_NIF_TERM atom_dist;
 static ERL_NIF_TERM atom_quantile;
 static ERL_NIF_TERM atom_histo;
 static struct optics_poller *poller;
+static int carbon_poller;
+static int erlang_poller;
 
 struct map_ctx {
   ErlNifEnv *env;
@@ -46,17 +48,48 @@ static int load(ErlNifEnv *env, void **priv_data, ERL_NIF_TERM load_info) {
     atom_dist = enif_make_atom(env, "dist");
     atom_histo = enif_make_atom(env, "histo");
     atom_quantile = enif_make_atom(env, "quantile");
-    poller = optics_poller_alloc();
-    ctx = enif_alloc(sizeof(struct map_ctx));
-    /* if (poller) { */
-    /*   optics_poller_backend(poller, (void *) ctx, backend_eo, backend_free_eo); */
-    /* } */
-
-    const char *host = "localhost";
-    const char *port = "1055";
-    optics_dump_carbon(poller, host, port);
+    carbon_poller = 0;
+    erlang_poller = 0;
     return 0;
 }
+
+
+static ERL_NIF_TERM eo_allocate_carbon_poller(
+    ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+{
+    if (!poller){
+        poller = optics_poller_alloc();
+    }
+    if (!poller) return ERROR("poller_allocation_error");
+    if (carbon_poller == 0) {
+        size_t host_size = 50;
+        size_t port_size = 10;
+        char host[host_size];
+        char port[port_size];
+        enif_get_string(env, argv[1], host, host_size, ERL_NIF_LATIN1);
+        enif_get_string(env, argv[2], port, port_size, ERL_NIF_LATIN1);
+        optics_dump_carbon(poller, host, port);
+        carbon_poller = 1;
+    }
+    return atom_ok;
+}
+
+static ERL_NIF_TERM eo_allocate_erlang_poller(
+    ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+{
+    if (!poller){
+        poller = optics_poller_alloc();
+    }
+    if (!poller) return ERROR("poller_allocation_error");
+
+    if (erlang_poller == 0) {
+        ctx = malloc(sizeof(struct map_ctx));
+        optics_poller_backend(poller, (void *) ctx, backend_eo, backend_free_eo);
+        erlang_poller = 1;
+    }
+    return atom_ok;
+}
+
 
 static void unload(ErlNifEnv *env, void *priv_data){
     if (poller) optics_poller_free(poller);
@@ -515,24 +548,16 @@ static ERL_NIF_TERM eo_optics_poll(
     if (!optics) return ERROR("get_optics");
     if (!poller) return ERROR("poller_allocation_error");
 
-    ctx->env = env;
-    ctx->map = enif_make_new_map(env);
-
+    if (erlang_poller != 0){
+        ctx->env = env;
+        ctx->map = enif_make_new_map(env);
+    }
     optics_poller_poll(poller);
-    return ctx->map;
-}
+    if (erlang_poller != 0) return enif_make_tuple2(env, atom_ok, ctx->map);
 
-static ERL_NIF_TERM eo_optics_poll_carbon(
-    ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
-{
-    struct optics *optics = get_optics(env, argv[0]);
-    if (!optics) return ERROR("get_optics");
-    if (!poller) return ERROR("poller_allocation_error");
-
-
-    optics_poller_poll(poller);
     return atom_ok;
 }
+
 
 static ErlNifFunc nif_funcs[] =
 {
@@ -559,7 +584,9 @@ static ErlNifFunc nif_funcs[] =
     {"quantile_alloc", 5, eo_quantile_alloc},
     {"quantile_update", 2, eo_quantile_update},
     {"optics_poll", 1, eo_optics_poll},
-    {"optics_poll_carbon", 1, eo_optics_poll_carbon},
+
+    {"allocate_erlang_poller", 1, eo_allocate_erlang_poller},
+    {"allocate_carbon_poller", 3, eo_allocate_carbon_poller},
 };
 
 ERL_NIF_INIT(erl_optics_nif, nif_funcs, load, NULL, NULL, unload)

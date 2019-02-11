@@ -22,7 +22,8 @@
     start/2,
     stop/0,
     poll/0,
-    poll_carbon/0
+    allocate_carbon_poller/2,
+    allocate_erlang_poller/0
 ]).
 
 
@@ -188,24 +189,34 @@ stop() ->
     ok = erl_optics_nif:optics_free(Ptr),
     ok = foil:delete(?NS).
 
--spec poll() -> {ok, map()} | {error, term()}.
+
+-spec poll() -> ok | {ok, map()} | {error, term()}.
 
 poll() ->
     case get_optics() of
-        {ok, Ptr} -> {ok, erl_optics_nif:optics_poll(Ptr)};
+        {ok, Ptr} ->
+            erl_optics_nif:optics_poll(Ptr);
         Err -> Err
     end.
 
--spec poll_carbon() -> ok | {error, term()}.
+-spec allocate_carbon_poller(binary(), binary()) -> ok | {error, term()}.
 
-poll_carbon() ->
+allocate_carbon_poller(Host, Port) ->
     case get_optics() of
         {ok, Ptr} ->
-            erl_optics_nif:optics_poll_carbon(Ptr),
-            ok;
+            erl_optics_nif:allocate_carbon_poller(Ptr, Host, Port);
         Err -> Err
     end.
 
+
+-spec allocate_erlang_poller() -> ok | {error, term()}.
+
+allocate_erlang_poller() ->
+    case get_optics() of
+        {ok, Ptr} ->
+            erl_optics_nif:allocate_erlang_poller(Ptr);
+        Err -> Err
+    end.
 
 %% private
 

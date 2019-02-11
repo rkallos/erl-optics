@@ -13,7 +13,7 @@ start_link() ->
 
 init([]) ->
     Server = {erl_optics_server,
-              {erl_optics_server, start_link, [1055, {carbon, 1000}]},
+              {erl_optics_server, start_link, [carbon]},
                permanent, 2000, worker, [erl_optics_server]},
     Children = [Server],
     RestartStrategy = {one_for_one, 1, 1},

@@ -10,7 +10,7 @@
          terminate/2,
          code_change/3]).
 
--export([start_link/2,
+-export([start_link/1,
          stop/0]).
 
 %for prototyping only
@@ -22,7 +22,7 @@
 
 -record(state, {port = ?ENV_PORT     :: inet:port_number(),
                 addr = ?ENV_HOSTNAME :: inet:socket_address() | inet:hostname(),
-                mode                 :: carbon | prometheus}).
+                mode                 :: carbon | prometheus | erlang}).
 
 
 %%%=========
@@ -31,8 +31,8 @@
 
 %Modes: prometheus | {carbon, interval=integer()}
 
-start_link(Port, Mode) ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [Port, Mode], []).
+start_link(Mode) ->
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [Mode], []).
 
 stop() ->
     gen_server:cast(?SERVER, stop).
@@ -44,15 +44,22 @@ start_test(Interval) ->
 %%% Callbacks
 %%%==========
 
-init([Port, Mode]) ->
+init([Mode]) ->
     case Mode of
-        {carbon, Interval} ->
-            timer:send_interval(Interval, carbon_poll),
+        carbon ->
+            erl_optics:allocate_carbon_poller("localhost", "1055"),
+            timer:send_interval(?DEFAULT_INTERVAL, carbon_poll),
             gen_server:cast(?SERVER, {test_update, 10}), %for testing
-            {ok, #state{mode = carbon}, 0}
+            {ok, #state{mode = carbon}, 0};
+        prometheus ->
+            %to be implemented
+            {ok, #state{mode = prometheus}, 0};
+        erlang ->
+            timer:send_interval(?DEFAULT_INTERVAL, erlang_poll),
+            {ok, #state{mode = erlang}, 0}
     end.
 
-handle_call(poll, _From, State) ->
+handle_call(erlang_poll, _From, State) ->
     {reply, erl_optics:poll(), State}.
 
 handle_cast(stop, State) ->
@@ -67,7 +74,7 @@ handle_info(test_update, State) ->
     test_update(),
     {noreply, State};
 handle_info(carbon_poll, State) ->
-    erl_optics:poll_carbon(),
+    erl_optics:poll(),
     {noreply, State}.
 
 
@@ -83,8 +90,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================
 %%% Internal functions
 %%%===================
-
-%not really implemented for now, only outputs the keys
 
 poll() ->
     {ok, Map} = erl_optics:poll(),

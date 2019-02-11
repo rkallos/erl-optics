@@ -6,6 +6,7 @@
 
 seq(Lenses, Lst) ->
     erl_optics:start(<<"test">>, Lenses),
+    erl_optics:allocate_erlang_poller(),
     Returns = lists:map(fun(Evt) ->
         case catch do(Evt) of
             ok -> ok;
