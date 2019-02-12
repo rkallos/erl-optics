@@ -20,16 +20,16 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {port = ?ENV_PORT     :: inet:port_number(),
-                addr = ?ENV_HOSTNAME :: inet:socket_address() | inet:hostname(),
-                mode                 :: carbon | prometheus | erlang}).
+-record(state, {port  :: inet:port_number() ,
+                addr  :: inet:socket_address() | inet:hostname(),
+                mode  :: carbon | prometheus | erlang}).
 
 
 %%%=========
 %%% API
 %%%=========
 
-%Modes: prometheus | carbon | erlang
+%Modes: prometheus | carbon
 
 start_link(Mode) ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [Mode], []).
@@ -53,15 +53,10 @@ init([Mode]) ->
             erl_optics:allocate_carbon_poller(Hostname, Port),
             timer:send_interval(Interval, carbon_poll),
             %gen_server:cast(?SERVER, {test_update, 10}), %for testing
-            {ok, #state{mode = carbon}, 0};
+            {ok, #state{mode = carbon, port = Port, addr = Hostname}, 0};
         prometheus ->
             %to be implemented
-            {ok, #state{mode = prometheus}, 0};
-        erlang ->
-            %not very useful by itself
-            Interval = ?ENV(?ENV_INTERVAL, ?DEFAULT_INTERVAL),
-            timer:send_interval(Interval, erlang_poll),
-            {ok, #state{mode = erlang}, 0}
+            {ok, #state{mode = prometheus}, 0}
     end.
 
 handle_call(erlang_poll, _From, State) ->
@@ -71,7 +66,10 @@ handle_cast(stop, State) ->
     {stop, normal, State};
 handle_cast({test_update, Interval}, State) ->
     timer:send_interval(Interval, test_update),
+    {noreply, State};
+handle_cast(_, State) ->
     {noreply, State}.
+
 
 handle_info(timeout, State) ->
     {noreply, State};
@@ -80,8 +78,9 @@ handle_info(test_update, State) ->
     {noreply, State};
 handle_info(carbon_poll, State) ->
     erl_optics:poll(),
+    {noreply, State};
+handle_info(_, State) ->
     {noreply, State}.
-
 
 terminate(_Reason, _State) ->
     ok.

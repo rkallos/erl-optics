@@ -66,8 +66,8 @@ static ERL_NIF_TERM eo_allocate_carbon_poller(
         size_t port_size = 255;
         char host[host_size];
         char port[port_size];
-        enif_get_string(env, argv[1], host, host_size, ERL_NIF_LATIN1);
-        enif_get_string(env, argv[2], port, port_size, ERL_NIF_LATIN1);
+        if (enif_get_string(env, argv[1], host, host_size, ERL_NIF_LATIN1) < 1) return ERROR("invalid_hostname");
+        if (enif_get_string(env, argv[2], port, port_size, ERL_NIF_LATIN1) < 1) return ERROR("invalid_port");
         optics_dump_carbon(poller, host, port);
         carbon_poller = 1;
     }
