@@ -29,7 +29,7 @@
 %%% API
 %%%=========
 
-%Modes: prometheus | {carbon, interval=integer()}
+%Modes: prometheus | carbon | erlang
 
 start_link(Mode) ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [Mode], []).
@@ -47,15 +47,20 @@ start_test(Interval) ->
 init([Mode]) ->
     case Mode of
         carbon ->
-            erl_optics:allocate_carbon_poller("localhost", "1055"),
-            timer:send_interval(?DEFAULT_INTERVAL, carbon_poll),
-            gen_server:cast(?SERVER, {test_update, 10}), %for testing
+            Hostname = ?ENV(?ENV_HOSTNAME, ?DEFAULT_HOSTNAME),
+            Port = ?ENV(?ENV_PORT, ?DEFAULT_PORT),
+            Interval = ?ENV(?ENV_INTERVAL, ?DEFAULT_INTERVAL),
+            erl_optics:allocate_carbon_poller(Hostname, Port),
+            timer:send_interval(Interval, carbon_poll),
+            %gen_server:cast(?SERVER, {test_update, 10}), %for testing
             {ok, #state{mode = carbon}, 0};
         prometheus ->
             %to be implemented
             {ok, #state{mode = prometheus}, 0};
         erlang ->
-            timer:send_interval(?DEFAULT_INTERVAL, erlang_poll),
+            %not very useful by itself
+            Interval = ?ENV(?ENV_INTERVAL, ?DEFAULT_INTERVAL),
+            timer:send_interval(Interval, erlang_poll),
             {ok, #state{mode = erlang}, 0}
     end.
 
@@ -90,10 +95,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================
 %%% Internal functions
 %%%===================
-
-poll() ->
-    {ok, Map} = erl_optics:poll(),
-    {ok, {Map, os:timestamp()}}.
 
 start() ->
     Lenses = [

@@ -199,7 +199,7 @@ poll() ->
         Err -> Err
     end.
 
--spec allocate_carbon_poller(binary(), binary()) -> ok | {error, term()}.
+-spec allocate_carbon_poller(list(), list()) -> ok | {error, term()}.
 
 allocate_carbon_poller(Host, Port) ->
     case get_optics() of

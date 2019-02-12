@@ -62,8 +62,8 @@ static ERL_NIF_TERM eo_allocate_carbon_poller(
     }
     if (!poller) return ERROR("poller_allocation_error");
     if (carbon_poller == 0) {
-        size_t host_size = 50;
-        size_t port_size = 10;
+        size_t host_size = 255;
+        size_t port_size = 255;
         char host[host_size];
         char port[port_size];
         enif_get_string(env, argv[1], host, host_size, ERL_NIF_LATIN1);
