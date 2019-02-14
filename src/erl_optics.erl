@@ -199,9 +199,10 @@ poll() ->
         Err -> Err
     end.
 
--spec allocate_carbon_poller(list(), list()) -> ok | {error, term()}.
+-spec allocate_carbon_poller(list(), non_neg_integer()) -> ok | {error, term()}.
 
 allocate_carbon_poller(Host, Port) ->
+    {ok, _Addr} = inet:getaddr(Host, inet),
     case get_optics() of
         {ok, Ptr} ->
             erl_optics_nif:allocate_carbon_poller(Ptr, Host, Port);

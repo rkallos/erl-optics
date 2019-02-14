@@ -20,9 +20,9 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {port  :: inet:port_number() ,
-                addr  :: inet:socket_address() | inet:hostname(),
-                mode  :: carbon | prometheus | erlang}).
+-record(state, {port  :: undefined | non_neg_integer(),
+                addr  :: undefined | list(),
+                mode  :: undefined | carbon | prometheus}).
 
 
 %%%=========
