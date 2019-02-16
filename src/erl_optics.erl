@@ -20,6 +20,7 @@
     quantile_update_timing_now/2,
     quantile_update_timing_now_us/2,
     start/2,
+    start_optics/2,
     stop/0,
     poll/0,
     allocate_carbon_poller/2,
@@ -182,6 +183,20 @@ start(Prefix, Lenses) ->
     end.
 
 
+-spec start_optics(binary(), list()) -> ok | {error, term()}.
+
+start_optics(Prefix, Lenses) ->
+    %check lenses validity (return failed lenses?)
+    start(Prefix, Lenses),
+    Poller = #{id => erl_optics_server,
+               start => {erl_optics_server, start_link, [carbon]},
+               shutdown => 2000,
+               restart => permanent,
+               type => worker,
+               modules => [erl_optics_server]},
+    supervisor:start_child(erl_optics_sup, Poller).
+
+
 -spec stop() -> ok.
 
 stop() ->
@@ -205,7 +220,7 @@ allocate_carbon_poller(Host, Port) ->
     {ok, _Addr} = inet:getaddr(Host, inet),
     case get_optics() of
         {ok, Ptr} ->
-            erl_optics_nif:allocate_carbon_poller(Ptr, Host, Port);
+            erl_optics_nif:allocate_carbon_poller(Ptr, Host, integer_to_list(Port));
         Err -> Err
     end.
 
