@@ -23,8 +23,8 @@
     start_optics/2,
     stop/0,
     poll/0,
-    allocate_carbon_poller/2,
-    allocate_erlang_poller/0
+    register_carbon_poller/2,
+    register_erlang_poller/0
 ]).
 
 
@@ -186,10 +186,10 @@ start(Prefix, Lenses) ->
 -spec start_optics(binary(), list()) -> ok | {error, term()}.
 
 start_optics(Prefix, Lenses) ->
-    %check lenses validity (return failed lenses?)
+    %todo: check lenses validity (return failed lenses?)
     start(Prefix, Lenses),
     Poller = #{id => erl_optics_server,
-               start => {erl_optics_server, start_link, [carbon]},
+               start => {erl_optics_server, start_link, []},
                shutdown => 2000,
                restart => permanent,
                type => worker,
@@ -214,23 +214,31 @@ poll() ->
         Err -> Err
     end.
 
--spec allocate_carbon_poller(list(), non_neg_integer()) -> ok | {error, term()}.
+-spec register_carbon_poller(list(), non_neg_integer()) -> ok | {error, term()}.
 
-allocate_carbon_poller(Host, Port) ->
-    {ok, _Addr} = inet:getaddr(Host, inet),
-    case get_optics() of
-        {ok, Ptr} ->
-            erl_optics_nif:allocate_carbon_poller(Ptr, Host, integer_to_list(Port));
+register_carbon_poller(Host, _) when not is_list(Host) ->
+    {error, "host_must_be_a_string"};
+
+register_carbon_poller(_, Port) when not is_integer(Port) orelse Port > 65535 orelse Port < 0 ->
+    {error, "invalid_port_number"};
+
+register_carbon_poller(Host, Port) ->
+    case inet:getaddr(Host, inet) of
+        {ok, _Addr} ->
+            case get_optics() of
+                {ok, Ptr} ->
+                    erl_optics_nif:register_carbon_poller(Ptr, Host, integer_to_list(Port));
+                Err -> Err
+            end;
         Err -> Err
     end.
 
+-spec register_erlang_poller() -> ok | {error, term()}.
 
--spec allocate_erlang_poller() -> ok | {error, term()}.
-
-allocate_erlang_poller() ->
+register_erlang_poller() ->
     case get_optics() of
         {ok, Ptr} ->
-            erl_optics_nif:allocate_erlang_poller(Ptr);
+            erl_optics_nif:register_erlang_poller(Ptr);
         Err -> Err
     end.
 
@@ -287,7 +295,6 @@ quantile_alloc(Name, Target, Estimate, AdjVal) ->
 
 
 create_foil() ->
-    application:ensure_all_started(foil),
     case foil:new(?MODULE) of
         {error, module_exists} ->
             {error, already_started};

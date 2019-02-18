@@ -10,7 +10,7 @@
          terminate/2,
          code_change/3]).
 
--export([start_link/1,
+-export([start_link/0,
          stop/0]).
 
 %for prototyping only
@@ -31,8 +31,8 @@
 
 %Modes: prometheus | carbon
 
-start_link(Mode) ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [Mode], []).
+start_link() ->
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 stop() ->
     gen_server:cast(?SERVER, stop).
@@ -44,13 +44,14 @@ start_test(Interval) ->
 %%% Callbacks
 %%%==========
 
-init([Mode]) ->
+init([]) ->
+    Mode = ?ENV(?ENV_MODE, ?DEFAULT_MODE),
     case Mode of
         carbon ->
             Hostname = ?ENV(?ENV_HOSTNAME, ?DEFAULT_HOSTNAME),
             Port = ?ENV(?ENV_PORT, ?DEFAULT_PORT),
             Interval = ?ENV(?ENV_INTERVAL, ?DEFAULT_INTERVAL),
-            erl_optics:allocate_carbon_poller(Hostname, Port),
+            erl_optics:register_carbon_poller(Hostname, Port),
             timer:send_interval(Interval, carbon_poll),
             %gen_server:cast(?SERVER, {test_update, 10}), %for testing
             {ok, #state{mode = carbon, port = Port, addr = Hostname}, 0};

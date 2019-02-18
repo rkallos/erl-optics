@@ -3,6 +3,8 @@
 -define(ENV_HOSTNAME, hostname).
 -define(ENV_PORT, port).
 -define(ENV_INTERVAL, interval).
+-define(ENV_MODE, mode).
+-define(DEFAULT_MODE, carbon).
 -define(DEFAULT_PORT, 1055).
 -define(DEFAULT_HOSTNAME, "localhost").
 -define(DEFAULT_INTERVAL, 10000).

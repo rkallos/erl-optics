@@ -22,8 +22,8 @@
     optics_poll/1,
     quantile_alloc/5,
     quantile_update/2,
-    allocate_carbon_poller/3,
-    allocate_erlang_poller/1
+    register_carbon_poller/3,
+    register_erlang_poller/1
 ]).
 
 %% THIS MODULE SHOULD ONLY BE CALLED FROM erl_optics.erl
@@ -86,7 +86,7 @@ quantile_alloc(_Optics, _Name, _Target, _Estimate, _Adjustment) ->
     ?nif_stub.
 quantile_update(_K, _V) ->
     ?nif_stub.
-allocate_erlang_poller(_Optics) ->
+register_erlang_poller(_Optics) ->
     ?nif_stub.
-allocate_carbon_poller(_Optics, _Host, _Port) ->
+register_carbon_poller(_Optics, _Host, _Port) ->
     ?nif_stub.
