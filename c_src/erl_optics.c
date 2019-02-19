@@ -61,16 +61,15 @@ static ERL_NIF_TERM eo_register_carbon_poller(
         poller = optics_poller_alloc();
     }
     if (!poller) return ERROR("poller_allocation_error");
-    if (!carbon_poller) {
-        enum {host_size = 255, port_size = 255 };
-        char host[host_size] = {0};
-        char port[port_size] = {0};
-        if (enif_get_string(env, argv[1], host, host_size, ERL_NIF_LATIN1) < 1) return ERROR("invalid_hostname");
-        if (enif_get_string(env, argv[2], port, port_size, ERL_NIF_LATIN1) < 1) return ERROR("invalid_port");
-        optics_dump_carbon(poller, host, port);
-        carbon_poller = true;
-    }
-    else return ERROR("carbon_poller_already_registered");
+    if (carbon_poller) return ERROR("carbon_poller_already_registered");
+
+    enum {host_size = 255, port_size = 255 };
+    char host[host_size] = {0};
+    char port[port_size] = {0};
+    if (enif_get_string(env, argv[1], host, host_size, ERL_NIF_LATIN1) < 1) return ERROR("invalid_hostname");
+    if (enif_get_string(env, argv[2], port, port_size, ERL_NIF_LATIN1) < 1) return ERROR("invalid_port");
+    optics_dump_carbon(poller, host, port);
+    carbon_poller = true;
     return atom_ok;
 }
 
@@ -547,11 +546,11 @@ static ERL_NIF_TERM eo_optics_poll(
     if (!poller) return ERROR("poller_allocation_error");
 
     if (erlang_poller){
-      assert(ctx);
-      ctx->env = env;
-      ctx->map = enif_make_new_map(env);
-      optics_poller_poll(poller);
-      return enif_make_tuple2(env, atom_ok, ctx->map);
+        assert(ctx);
+        ctx->env = env;
+        ctx->map = enif_make_new_map(env);
+        optics_poller_poll(poller);
+        return enif_make_tuple2(env, atom_ok, ctx->map);
     }
     optics_poller_poll(poller);
     return enif_make_tuple2(env, atom_ok, atom_ok);
