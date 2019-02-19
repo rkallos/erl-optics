@@ -183,7 +183,7 @@ start(Prefix, Lenses) ->
     end.
 
 
--spec start_optics(binary(), list()) -> ok | {error, term()}.
+-spec start_optics(binary(), list()) -> {ok, term()} | {error, term()}.
 
 start_optics(Prefix, Lenses) ->
     %todo: check lenses validity (return failed lenses?)
