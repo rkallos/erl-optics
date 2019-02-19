@@ -22,14 +22,14 @@
 
 -record(state, {port  :: undefined | non_neg_integer(),
                 addr  :: undefined | list(),
-                mode  :: undefined | carbon | prometheus}).
+                mode  :: undefined | carbon | prometheus | blank}).
 
 
 %%%=========
 %%% API
 %%%=========
 
-%Modes: prometheus | carbon
+%Modes: prometheus | carbon | blank
 
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
@@ -57,7 +57,9 @@ init([]) ->
             {ok, #state{mode = carbon, port = Port, addr = Hostname}, 0};
         prometheus ->
             %to be implemented
-            {ok, #state{mode = prometheus}, 0}
+            {ok, #state{mode = prometheus}, 0};
+        blank ->
+            {ok, #state{mode = blank}, 0}
     end.
 
 handle_call(erlang_poll, _From, State) ->
