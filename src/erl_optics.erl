@@ -172,7 +172,7 @@ quantile_update_timing_now_us(Key, Stamp) ->
     Delta = timer:now_diff(os:timestamp(), Stamp),
     quantile_update(Key, Delta).
 
--spec start(binary(), [erl_optics_lens:desc()]) -> ok.
+-spec start(binary(), [erl_optics_lens:desc()]) -> ok | {error, term()}.
 
 start(Prefix, Lenses) ->
     case create_foil() of
@@ -187,7 +187,7 @@ start(Prefix, Lenses) ->
 
 start_optics(Prefix, Lenses) ->
     %todo: check lenses validity (return failed lenses?)
-    start(Prefix, Lenses),
+    ok = start(Prefix, Lenses),
     Poller = #{id => erl_optics_server,
                start => {erl_optics_server, start_link, []},
                shutdown => 2000,
