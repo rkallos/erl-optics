@@ -3,26 +3,33 @@
 
 -behaviour(gen_server).
 
--export([init/1,
-         handle_call/3,
-         handle_cast/2,
-         handle_info/2,
-         terminate/2,
-         code_change/3]).
+-export([
+    init/1,
+    handle_call/3,
+    handle_cast/2,
+    handle_info/2,
+    terminate/2,
+    code_change/3
+]).
 
--export([start_link/0,
-         stop/0]).
+-export([
+    start_link/0,
+    stop/0
+]).
 
 %for prototyping only
--export([start/0,
-         test_update/0,
-         start_test/1]).
+-export([
+    start/0,
+    test_update/0,
+    start_test/1]).
 
 -define(SERVER, ?MODULE).
 
--record(state, {port  :: undefined | non_neg_integer(),
-                addr  :: undefined | list(),
-                mode  :: undefined | carbon | prometheus | blank}).
+-record(state, {
+    port  :: undefined | non_neg_integer(),
+    addr  :: undefined | list(),
+    mode  :: undefined | carbon | prometheus | blank
+}).
 
 
 %%%=========

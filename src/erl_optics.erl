@@ -189,11 +189,11 @@ start_optics(Prefix, Lenses) ->
     %todo: check lenses validity (return failed lenses?)
     ok = start(Prefix, Lenses),
     Poller = #{id => erl_optics_server,
-               start => {erl_optics_server, start_link, []},
-               shutdown => 2000,
-               restart => permanent,
-               type => worker,
-               modules => [erl_optics_server]},
+        start => {erl_optics_server, start_link, []},
+        shutdown => 2000,
+        restart => permanent,
+        type => worker,
+        modules => [erl_optics_server]},
     supervisor:start_child(erl_optics_sup, Poller).
 
 
