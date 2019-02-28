@@ -28,7 +28,7 @@
 -record(state, {
     port  :: undefined | non_neg_integer(),
     addr  :: undefined | list(),
-    mode  :: undefined | carbon | prometheus | blank
+    mode  :: undefined | carbon | blank
 }).
 
 
@@ -36,7 +36,7 @@
 %%% API
 %%%=========
 
-%Modes: prometheus | carbon | blank
+%Modes: carbon | blank
 
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
@@ -51,7 +51,7 @@ start_test(Interval) ->
 %%% Callbacks
 %%%==========
 
-init([]) ->
+init(_) ->
     Mode = ?ENV(?ENV_MODE, ?DEFAULT_MODE),
     case Mode of
         carbon ->
@@ -62,9 +62,6 @@ init([]) ->
             timer:send_interval(Interval, carbon_poll),
             %gen_server:cast(?SERVER, {test_update, 10}), %for testing
             {ok, #state{mode = carbon, port = Port, addr = Hostname}, 0};
-        prometheus ->
-            %to be implemented
-            {ok, #state{mode = prometheus}, 0};
         blank ->
             {ok, #state{mode = blank}, 0}
     end.
