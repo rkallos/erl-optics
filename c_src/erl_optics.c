@@ -53,7 +53,6 @@ static int load(ErlNifEnv *env, void **priv_data, ERL_NIF_TERM load_info) {
     return 0;
 }
 
-
 static ERL_NIF_TERM eo_register_carbon_poller(
     ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
 {
@@ -63,11 +62,13 @@ static ERL_NIF_TERM eo_register_carbon_poller(
     if (!poller) return ERROR("poller_allocation_error");
     if (carbon_poller) return ERROR("carbon_poller_already_registered");
 
-    enum {host_size = 255, port_size = 255 };
+    enum {host_size = 255, port_size = 255, msg_size = 600};
     char host[host_size] = {0};
     char port[port_size] = {0};
-    if (enif_get_string(env, argv[1], host, host_size, ERL_NIF_LATIN1) < 1) return ERROR("invalid_hostname");
-    if (enif_get_string(env, argv[2], port, port_size, ERL_NIF_LATIN1) < 1) return ERROR("invalid_port");
+    if (enif_get_string(env, argv[1], host, host_size, ERL_NIF_LATIN1) < 1 ||
+        enif_get_string(env, argv[2], port, port_size, ERL_NIF_LATIN1) < 1) {
+        return ERROR("unable_to_decode(hostname|port)");
+    }
     optics_dump_carbon(poller, host, port);
     carbon_poller = true;
     return atom_ok;
