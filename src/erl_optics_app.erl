@@ -19,6 +19,7 @@ start(_Type, _StartArgs) ->
 
 stop(_State) ->
     supervisor:terminate_child(erl_optics_sup, erl_optics_server),
+    exit(whereis(erl_optics_sup), kill),
     ok.
 
 start() ->
