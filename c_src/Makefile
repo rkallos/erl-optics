@@ -15,13 +15,13 @@ C_SRC_OUTPUT ?= $(CURDIR)/../priv/$(PROJECT).so
 # C compiler/flags.
 
 CC ?= gcc
-CFLAGS ?= -O3 -std=gnu11 -finline-functions -Wall -Wmissing-prototypes
+CFLAGS ?= -O3 -finline-functions -Wall -Wmissing-prototypes
 CXXFLAGS ?= -O3 -finline-functions -Wall
 
-CFLAGS += -fPIC -I $(ERTS_INCLUDE_DIR) -I $(ERL_INTERFACE_INCLUDE_DIR)
+CFLAGS += -std=gnu11 -fPIC -I $(ERTS_INCLUDE_DIR) -I $(ERL_INTERFACE_INCLUDE_DIR)
 CXXFLAGS += -fPIC -I $(ERTS_INCLUDE_DIR) -I $(ERL_INTERFACE_INCLUDE_DIR)
 
-LDLIBS += -L $(ERL_INTERFACE_LIB_DIR) -lerl_interface -lei -loptics
+LDLIBS += -L $(ERL_INTERFACE_LIB_DIR) -lerl_interface -lei -loptics -loptics_poller
 LDFLAGS += -shared
 
 # Verbosity.
