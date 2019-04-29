@@ -27,6 +27,8 @@
     register_erlang_poller/0
 ]).
 
+-callback get_optics_lenses() ->
+    {ok, list(erl_optics_lens:lens())}.
 
 -spec counter_inc(binary()) -> ok | {error, term()}.
 
