@@ -317,7 +317,14 @@ create_optics(Name) ->
     end.
 
 get_lens(Key) ->
-    foil:lookup(?NS, Key).
+    case foil:lookup(?NS, Key) of
+        {ok, Ptr} ->
+            {ok, Ptr};
+        {error, key_not_found} ->
+            {error, {key_not_found, Key}};
+        {error, Reason} ->
+            {error, Reason}
+    end.
 
 
 get_optics() ->
