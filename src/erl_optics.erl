@@ -13,13 +13,16 @@
     dist_record_timing_now/2,
     gauge_set/2,
     gauge_set_alloc/2,
+    get_lenses/1,
     histo_inc/2,
     lens_update/2,
     lens_free/1,
+    make_lenses_list/0,
     quantile_update/2,
     quantile_update_timing_now/2,
     quantile_update_timing_now_us/2,
     start/2,
+    start_optics/1,
     start_optics/2,
     stop/0,
     poll/0,
@@ -200,6 +203,8 @@ start_optics(Prefix, Lenses) ->
     },
     supervisor:start_child(erl_optics_sup, Poller).
 
+start_optics(Prefix) ->
+    start_optics(Prefix, make_lenses_list()).
 
 -spec stop() -> ok.
 
@@ -326,6 +331,35 @@ get_lens(Key) ->
             {error, Reason}
     end.
 
-
 get_optics() ->
     foil:lookup(?NS, optics).
+
+get_lenses(Module) ->
+    case erlang:function_exported(Module, get_optics_lenses, 0) of
+        true ->
+            try {ok, Lenses} = Module:get_optics_lenses()
+            catch
+                Error:Reason ->
+                    {Error, Reason, Module}
+            end;
+        false->
+            []
+    end.
+
+check_error(Val, {Lenses, Errors}) ->
+    case Val of
+        {ok, Value} ->
+            {[Value | Lenses], Errors};
+        {Error, Reason, Module} ->
+            {Lenses, [{Module, Reason}| Errors]}
+    end.
+
+make_lenses_list() ->
+    Lst = lists:flatten([get_lenses(Module) || {Module, _} <- code:all_loaded()]),
+    {Lenses, Errors} = lists:foldl(fun check_error/2, {[], []}, Lst),
+    case Errors of
+        [] -> ok;
+        _ ->
+            logger:error("get_optics_lenses output error:~n~p", [Errors])
+    end,
+    lists:usort(Lenses).
