@@ -3,8 +3,13 @@
 -define(ENV_HOSTNAME, hostname).
 -define(ENV_PORT, port).
 -define(ENV_INTERVAL, interval).
+-define(ENV_FOIL_RELOAD_INTERVAL, foil_reload_interval).
 -define(ENV_MODE, mode).
+-define(ENV_FOIL_NAMESPACE, foil_namespace).
+-define(DEFAULT_FOIL_NAMESPACE, erl_optics).
+-define(NS, ?ENV(?ENV_FOIL_NAMESPACE, ?DEFAULT_FOIL_NAMESPACE)).
 -define(DEFAULT_MODE, blank).
 -define(DEFAULT_PORT, 1055).
 -define(DEFAULT_HOSTNAME, "localhost").
 -define(DEFAULT_INTERVAL, 10000).
+-define(DEFAULT_FOIL_RELOAD_INTERVAL, 1000).
