@@ -1,23 +1,18 @@
 -module(erl_optics).
+-include("erl_optics.hrl").
 
--define(NS, ?MODULE).
+
 
 -export([
     counter_inc/1,
     counter_inc/2,
-    counter_inc_alloc/1,
-    counter_inc_alloc/2,
     dist_record/2,
-    dist_record_alloc/2,
     dist_record_timing_now_us/2,
     dist_record_timing_now/2,
     gauge_set/2,
-    gauge_set_alloc/2,
-    get_lenses/1,
     histo_inc/2,
     lens_update/2,
     lens_free/1,
-    make_lenses_list/0,
     quantile_update/2,
     quantile_update_timing_now/2,
     quantile_update_timing_now_us/2,
@@ -30,8 +25,7 @@
     register_erlang_poller/0
 ]).
 
--callback get_optics_lenses() ->
-    {ok, list(erl_optics_lens:lens())}.
+-type pointer() :: integer().
 
 -spec counter_inc(binary()) -> ok | {error, term()}.
 
@@ -44,27 +38,21 @@ counter_inc(Key, Amt) ->
     case get_lens(Key) of
         {ok, Ptr} ->
             erl_optics_nif:counter_inc(Ptr, Amt);
+        {error, {key_not_found, _}} ->
+            case check_ets(Key) of
+                false ->
+                    {ok, Ptr} = counter_inc_alloc(Key, Amt),
+                    erl_optics_foil_server:add_lens(Key, Ptr);
+                true ->
+                    {ok, Ptr} = counter_inc_alloc(Key, Amt),
+                    erl_optics_nif:lens_close(Ptr)
+            end;
         {error, Msg} ->
             {error, Msg}
     end.
 
-
-
--spec counter_inc_alloc(binary()) -> ok | {error, term()}.
-
-counter_inc_alloc(Key) ->
-    counter_inc_alloc(Key, 1).
-
--spec counter_inc_alloc(binary(), integer()) -> ok | {error, term()}.
-
-counter_inc_alloc(Key, Amt)->
-    {ok, OpticsPtr} = get_optics(),
-    {ok, Ptr} = erl_optics_nif:counter_alloc_get(OpticsPtr, Key),
-    erl_optics_nif:counter_inc(Ptr, Amt),
-    erl_optics_nif:lens_close(Ptr).
-
-
 -spec dist_record(binary(), number()) -> ok | {error, term()}.
+
 dist_record(Key, Val) when is_integer(Val) ->
     dist_record(Key, float(Val));
 
@@ -72,20 +60,21 @@ dist_record(Key, Val) ->
     case get_lens(Key) of
         {ok, Ptr} ->
             erl_optics_nif:dist_record(Ptr, Val);
+        {error, {key_not_found, _}} ->
+            case check_ets(Key) of
+                false ->
+                    {ok, Ptr} = dist_record_alloc(Key, Val),
+                    erl_optics_foil_server:add_lens(Key, Ptr);
+                true ->
+                    {ok, Ptr} = dist_record_alloc(Key, Val),
+                    erl_optics_nif:lens_close(Ptr)
+            end;
         {error, Msg} ->
             {error, Msg}
     end.
 
--spec dist_record_alloc(binary(), float()) -> ok | {error, term()}.
-
-dist_record_alloc(Key, Val) ->
-    {ok, OpticsPtr} = get_optics(),
-    {ok, Ptr} = erl_optics_nif:dist_alloc_get(OpticsPtr, Key),
-    erl_optics_nif:dist_record(Ptr, Val),
-    erl_optics_nif:lens_close(Ptr).
 
 -spec dist_record_timing_now_us(binary(), erlang:timestamp()) -> ok | {error, term()}.
-
 dist_record_timing_now_us(Key, Stamp) ->
     Delta = float(timer:now_diff(os:timestamp(), Stamp)),
     dist_record(Key, Delta).
@@ -105,21 +94,18 @@ gauge_set(Key, Val) ->
     case get_lens(Key) of
         {ok, Ptr} ->
             erl_optics_nif:gauge_set(Ptr, Val);
+        {error, {key_not_found, _}} ->
+            case check_ets(Key) of
+                false ->
+                    {ok, Ptr} = gauge_set_alloc(Key, Val),
+                    erl_optics_foil_server:add_lens(Key, Ptr);
+                true ->
+                    {ok, Ptr} = gauge_set_alloc(Key, Val),
+                    erl_optics_nif:lens_close(Ptr)
+            end;
         {error, Msg} ->
             {error, Msg}
     end.
-
--spec gauge_set_alloc(binary(), number()) -> ok | {error, term()}.
-
-gauge_set_alloc(Key, Val) when is_integer(Val) ->
-    gauge_set_alloc(Key, float(Val));
-
-gauge_set_alloc(Key, Val) ->
-    {ok, OpticsPtr} = get_optics(),
-    {ok, Ptr} = erl_optics_nif:gauge_alloc_get(OpticsPtr, Key),
-    erl_optics_nif:gauge_set(Ptr, Val),
-    erl_optics_nif:lens_close(Ptr).
-
 
 -spec histo_inc(binary(), number()) -> ok | {error, term()}.
 
@@ -201,10 +187,19 @@ start_optics(Prefix, Lenses) ->
         type => worker,
         modules => [erl_optics_server]
     },
-    supervisor:start_child(erl_optics_sup, Poller).
+    FoilServer = #{
+      id => erl_optics_foil_server,
+      start => {erl_optics_foil_server, start_link, []},
+      shutdown => 2000,
+      restart => permanent,
+      type => worker,
+      modules => [erl_optics_foil_server]
+     },
+    supervisor:start_child(erl_optics_sup, Poller),
+    supervisor:start_child(erl_optics_sup, FoilServer).
 
 start_optics(Prefix) ->
-    start_optics(Prefix, make_lenses_list()).
+    start_optics(Prefix, []).
 
 -spec stop() -> ok.
 
@@ -252,6 +247,35 @@ register_erlang_poller() ->
     end.
 
 %% private
+
+-spec counter_inc_alloc(binary(), integer()) ->  {ok, pointer()} | {error, term()}.
+
+counter_inc_alloc(Key, Amt)->
+    {ok, OpticsPtr} = get_optics(),
+    {ok, Ptr} = erl_optics_nif:counter_alloc_get(OpticsPtr, Key),
+    erl_optics_nif:counter_inc(Ptr, Amt),
+    {ok, Ptr}.
+
+
+-spec dist_record_alloc(binary(), float()) -> {ok, pointer()} | {error, term()}.
+
+dist_record_alloc(Key, Val) ->
+    {ok, OpticsPtr} = get_optics(),
+    {ok, Ptr} = erl_optics_nif:dist_alloc_get(OpticsPtr, Key),
+    erl_optics_nif:dist_record(Ptr, Val),
+    {ok, Ptr}.
+
+-spec gauge_set_alloc(binary(), number()) -> {ok, pointer()} | {error, term()}.
+
+gauge_set_alloc(Key, Val) when is_integer(Val) ->
+    gauge_set_alloc(Key, float(Val));
+
+gauge_set_alloc(Key, Val) ->
+    {ok, OpticsPtr} = get_optics(),
+    {ok, Ptr} = erl_optics_nif:gauge_alloc_get(OpticsPtr, Key),
+    erl_optics_nif:gauge_set(Ptr, Val),
+    {ok, Ptr}.
+
 
 alloc_lenses([]) ->
     ok = foil:load(?NS);
@@ -334,32 +358,10 @@ get_lens(Key) ->
 get_optics() ->
     foil:lookup(?NS, optics).
 
-get_lenses(Module) ->
-    case erlang:function_exported(Module, get_optics_lenses, 0) of
-        true ->
-            try {ok, Lenses} = Module:get_optics_lenses()
-            catch
-                Error:Reason ->
-                    {Error, Reason, Module}
-            end;
-        false->
-            []
-    end.
+-spec check_ets(binary()) -> boolean().
 
-check_error(Val, {Lenses, Errors}) ->
-    case Val of
-        {ok, Value} ->
-            {[Value | Lenses], Errors};
-        {Error, Reason, Module} ->
-            {Lenses, [{Module, Reason}| Errors]}
+check_ets(Key) ->
+    case ets:update_counter(erl_optics_ets, Key, 1, {Key, 0}) of
+        1 -> false;
+        _ -> true
     end.
-
-make_lenses_list() ->
-    Lst = lists:flatten([get_lenses(Module) || {Module, _} <- code:all_loaded()]),
-    {Lenses, Errors} = lists:foldl(fun check_error/2, {[], []}, Lst),
-    case Errors of
-        [] -> ok;
-        _ ->
-            logger:error("get_optics_lenses output error:~n~p", [Errors])
-    end,
-    lists:usort(Lenses).
