@@ -206,7 +206,8 @@ start_optics(Prefix) ->
 stop() ->
     {ok, Ptr} = get_optics(),
     ok = erl_optics_nif:optics_free(Ptr),
-    ok = foil:delete(?NS).
+    ok = foil:delete(?NS),
+    application:stop(erl_optics).
 
 
 -spec poll() -> ok | {ok, map()} | {error, term()}.
