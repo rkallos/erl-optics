@@ -14,4 +14,4 @@ install:
 - git clone https://github.com/RAttab/optics && pushd optics && cmake . && make && sudo make install && popd
 - sudo ldconfig
 script:
-- ./rebar3 compile && ./rebar3 as test eunit && ./rebar3 as test proper && ./rebar3 as test dialyzer
+- ./rebar3 compile && ./rebar3 xref && ./rebar3 as test eunit && ./rebar3 as test proper && ./rebar3 as test dialyzer
